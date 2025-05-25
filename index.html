@@ -1,0 +1,862 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pastel Cherry Music Player</title>
+  <style>
+    body {
+      background-color: #ffe4e1;
+      color: #4a2c2a;
+      font-family: 'Press Start 2P', cursive;
+      min-height: 100vh;
+      margin: 0;
+      image-rendering: pixelated;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    #visualizer {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+      pointer-events: none;
+    }
+
+    .container {
+      background-color: #fff0f5;
+      padding: 20px;
+      border: 4px solid #ffb6c1;
+      box-shadow: 0 0 0 4px #4a2c2a, 8px 8px 0 0 #4a2c2a;
+      max-width: 500px;
+      width: 100%;
+      text-align: center;
+      position: relative;
+      z-index: 1;
+      margin: 20px auto;
+    }
+
+    .settings {
+      text-align: left;
+      margin-bottom: 10px;
+    }
+
+    .settings-button, .auth-button, .pomodoro-button, .host-toggle {
+      background-color: #ffb6c1;
+      border: 2px solid #4a2c2a;
+      padding: 8px;
+      font-family: 'Press Start 2P', cursive;
+      font-size: 10px;
+      color: #4a2c2a;
+      cursor: pointer;
+      margin-right: 5px;
+    }
+
+    .settings-panel {
+      display: none;
+      background-color: #fff;
+      border: 2px solid #4a2c2a;
+      padding: 10px;
+      margin-top: 10px;
+    }
+
+    .settings-panel.show {
+      display: block;
+    }
+
+    .equalizer, .hifi {
+      margin: 10px 0;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: #ffb6c1;
+    }
+
+    input[type="text"], input[type="password"], input[type="email"] {
+      width: 80%;
+      padding: 10px;
+      margin: 10px 0;
+      border: 2px solid #4a2c2a;
+      background-color: #fff;
+      font-family: 'Press Start 2P', cursive;
+      font-size: 12px;
+      color: #4a2c2a;
+    }
+
+    button {
+      background-color: #ffb6c1;
+      border: 2px solid #4a2c2a;
+      padding: 10px 15px;
+      font-family: 'Press Start 2P', cursive;
+      font-size: 10px;
+      color: #4a2c2a;
+      cursor: pointer;
+      margin: 5px;
+      transition: transform 0.1s;
+    }
+
+    button:hover {
+      transform: scale(1.1);
+    }
+
+    #player-container {
+      margin-top: 20px;
+      height: 0;
+      overflow: hidden;
+    }
+
+    #current-track {
+      margin: 15px 0;
+      font-size: 12px;
+      color: #4a2c2a;
+    }
+
+    #seek-bar {
+      width: 80%;
+      margin: 10px auto;
+    }
+
+    #playlist, #queue {
+      margin-top: 15px;
+      max-height: 200px;
+      overflow-y: auto;
+      font-size: 10px;
+      text-align: left;
+    }
+
+    #playlist div, #queue div {
+      padding: 5px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+    }
+
+    #queue div {
+      cursor: default;
+    }
+
+    #playlist div::before, #queue div::before {
+      content: '🍒';
+      margin-right: 8px;
+      font-size: 12px;
+    }
+
+    #playlist div:hover {
+      background-color: #ffb6c1;
+    }
+
+    .popup {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(74, 44, 42, 0.5);
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+
+    .popup-content {
+      background-color: #fff0f5;
+      padding: 20px;
+      border: 4px solid #ffb6c1;
+      box-shadow: 0 0 0 4px #4a2c2a, 8px 8px 0 0 #4a2c2a;
+      max-width: 400px;
+      width: 90%;
+      text-align: center;
+    }
+
+    .popup-content h2 {
+      font-size: 16px;
+      margin-bottom: 15px;
+    }
+
+    .popup-content h2::before {
+      content: '🍒 ';
+    }
+
+    .popup-content h2::after {
+      content: ' 🍒';
+    }
+
+    .popup-content button::before {
+      content: '🍒 ';
+    }
+
+    .close-button {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: none;
+      border: none;
+      font-size: 14px;
+      cursor: pointer;
+      color: #4a2c2a;
+    }
+
+    #pomodoro-timer {
+      font-size: 24px;
+      margin: 15px 0;
+      color: #ff4040;
+    }
+
+    #pomodoro-status {
+      font-size: 12px;
+      margin-bottom: 10px;
+    }
+
+    #host-bubble {
+      display: none;
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background-color: #fff0f5;
+      border: 3px solid #ffb6c1;
+      padding: 12px;
+      border-radius: 12px;
+      box-shadow: 0 0 0 3px #4a2c2a;
+      max-width: 280px;
+      font-size: 11px;
+      z-index: 1000;
+      animation: fadeInOut 5s ease-in-out;
+      display: flex;
+      align-items: center;
+    }
+
+    #host-bubble::before {
+      content: '🍒';
+      font-size: 16px;
+      margin-right: 8px;
+      display: inline-block;
+    }
+
+    @keyframes fadeInOut {
+      0% { opacity: 0; transform: translateY(10px); }
+      10% { opacity: 1; transform: translateY(0); }
+      90% { opacity: 1; transform: translateY(0); }
+      100% { opacity: 0; transform: translateY(10px); }
+    }
+
+    @media (max-width: 600px) {
+      .container {
+        padding: 15px;
+      }
+
+      input[type="text"], input[type="password"], input[type="email"] {
+        font-size: 10px;
+      }
+
+      button {
+        font-size: 8px;
+        padding: 8px 12px;
+      }
+
+      .settings-button, .auth-button, .pomodoro-button, .host-toggle {
+        font-size: 8px;
+        padding: 6px;
+      }
+
+      #current-track {
+        font-size: 10px;
+      }
+
+      #playlist div::before, #queue div::before {
+        font-size: 10px;
+      }
+
+      .popup-content {
+        padding: 15px;
+      }
+
+      .popup-content h2 {
+        font-size: 14px;
+      }
+
+      #pomodoro-timer {
+        font-size: 18px;
+      }
+
+      #host-bubble {
+        max-width: 220px;
+        font-size: 9px;
+        bottom: 10px;
+        right: 10px;
+        padding: 8px;
+      }
+
+      #host-bubble::before {
+        font-size: 12px;
+        margin-right: 6px;
+      }
+    }
+  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+</head>
+<body>
+  <canvas id="visualizer"></canvas>
+  <div class="container">
+    <div class="settings">
+      <button class="settings-button" onclick="toggleSettings()">Settings</button>
+      <button class="auth-button" onclick="showPopup('login')">Login</button>
+      <button class="auth-button" onclick="showPopup('signup')">Sign Up</button>
+      <button class="pomodoro-button" onclick="showPopup('pomodoro')">Pomodoro 🍒</button>
+      <button class="host-toggle" onclick="toggleHost()">AI Host 🍒 On</button>
+      <div id="settings-panel" class="settings-panel">
+        <div class="equalizer">
+          <label>Low (Bass): <input type="range" id="eq-low" min="0" max="100" value="50"></label><br>
+          <label>Mid: <input type="range" id="eq-mid" min="0" max="100" value="50"></label><br>
+          <label>High (Treble): <input type="range" id="eq-high" min="0" max="100" value="50"></label>
+        </div>
+        <div class="hifi">
+          <label><input type="checkbox" id="hifi-mode"> Hi-Fi Mode</label>
+        </div>
+      </div>
+    </div>
+    <input type="text" id="youtube-url" placeholder="Enter YouTube URL or Playlist URL">
+    <div>
+      <button onclick="loadMusic()">Load</button>
+      <button onclick="playPause()">Play/Pause</button>
+      <button onclick="stop()">Stop</button>
+      <button onclick="previousTrack()">Previous</button>
+      <button onclick="nextTrack()">Next</button>
+      <button onclick="adjustVolume(-10)">Vol -</button>
+      <button onclick="adjustVolume(10)">Vol +</button>
+      <button onclick="toggleMute()">Mute</button>
+      <button onclick="toggleShuffle()">Shuffle</button>
+      <button onclick="toggleRepeat()">Repeat</button>
+    </div>
+    <input type="range" id="seek-bar" min="0" max="100" value="0">
+    <div id="player-container"></div>
+    <div id="current-track">No track loaded</div>
+    <div id="playlist"></div>
+    <div id="queue"></div>
+  </div>
+
+  <div id="login-popup" class="popup">
+    <div class="popup-content">
+      <button class="close-button" onclick="closePopup()">X</button>
+      <h2>Login</h2>
+      <input type="text" id="login-username" placeholder="Username or Email">
+      <input type="password" id="login-password" placeholder="Password">
+      <button onclick="handleLogin()">Login</button>
+    </div>
+  </div>
+
+  <div id="signup-popup" class="popup">
+    <div class="popup-content">
+      <button class="close-button" onclick="closePopup()">X</button>
+      <h2>Sign Up</h2>
+      <input type="text" id="signup-username" placeholder="Username">
+      <input type="email" id="signup-email" placeholder="Email">
+      <input type="password" id="signup-password" placeholder="Password">
+      <input type="password" id="signup-confirm-password" placeholder="Confirm Password">
+      <button onclick="handleSignUp()">Sign Up</button>
+    </div>
+  </div>
+
+  <div id="pomodoro-popup" class="popup">
+    <div class="popup-content">
+      <button class="close-button" onclick="closePopup()">X</button>
+      <h2>Pomodoro Timer</h2>
+      <div id="pomodoro-status">Work Session 🍒</div>
+      <div id="pomodoro-timer">25:00</div>
+      <button onclick="startPomodoro()">Start</button>
+      <button onclick="resetPomodoro()">Reset</button>
+    </div>
+  </div>
+
+  <div id="host-bubble"></div>
+
+  <script src="https://www.youtube.com/iframe_api"></script>
+  <script>
+    let player;
+    let playlist = [];
+    let currentTrackIndex = 0;
+    let isPlaying = false;
+    let duration = 0;
+    let isMuted = false;
+    let isShuffled = false;
+    let isRepeat = false;
+    let isHostEnabled = true;
+
+    // Visualizer setup
+    const canvas = document.getElementById('visualizer');
+    const ctx = canvas.getContext('2d');
+    let cherries = [];
+
+    function initVisualizer() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      cherries = [];
+      for (let i = 0; i < 15; i++) {
+        cherries.push({
+          x: Math.random() * canvas.width,
+          y: -20,
+          speed: Math.random() * 3 + 2,
+          size: Math.random() * 12 + 12
+        });
+      }
+    }
+
+    function drawVisualizer() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (isPlaying) {
+        cherries.forEach(cherry => {
+          cherry.y += cherry.speed;
+          if (cherry.y > canvas.height) cherry.y = -20;
+          ctx.font = `${cherry.size}px 'Press Start 2P'`;
+          ctx.fillStyle = '#ff4040';
+          ctx.fillText('🍒', cherry.x, cherry.y);
+        });
+      }
+      requestAnimationFrame(drawVisualizer);
+    }
+
+    window.addEventListener('resize', () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      cherries.forEach(cherry => {
+        cherry.x = Math.random() * canvas.width;
+        cherry.y = Math.random() * canvas.height;
+      });
+    });
+
+    // AI Host setup
+    function hostSpeak() {
+      if (!isHostEnabled) return;
+      const trackNum = currentTrackIndex + 1;
+      const totalTracks = playlist.length;
+      let message = '';
+      const isFirstTrack = trackNum === 1;
+      const isLastTrack = trackNum === totalTracks;
+      const isSingleTrack = totalTracks === 1;
+
+      const basePhrases = [
+        `Hey there, cherry fans! Ready for a sweet tune? 🍒`,
+        `Let's keep the good vibes rolling! 🍒`,
+        `Time for another juicy track! 🍒`,
+        `Hope you're loving this cherry-picked song! 🍒`
+      ];
+      const firstTrackPhrases = [
+        `Kicking off with a fresh track! Let's get started! 🍒`,
+        `Welcome to Cherry FM! Here's our first song! 🍒`
+      ];
+      const lastTrackPhrases = [
+        `Last track of the set! Make it count! 🍒`,
+        `Wrapping up with this gem! 🍒`
+      ];
+      const singleTrackPhrases = [
+        `Just one cherry-picked song for you today! 🍒`,
+        `This track's all you need right now! 🍒`
+      ];
+      const shufflePhrases = [
+        `Shuffling things up for a surprise vibe! 🍒`,
+        `Mixing it up with a random pick! 🍒`
+      ];
+      const repeatPhrases = [
+        `Loving this one? Let's loop it again! 🍒`,
+        `Can't get enough of this track! 🍒`
+      ];
+
+      if (isSingleTrack) {
+        message = singleTrackPhrases[Math.floor(Math.random() * singleTrackPhrases.length)];
+      } else if (isFirstTrack) {
+        message = firstTrackPhrases[Math.floor(Math.random() * firstTrackPhrases.length)];
+      } else if (isLastTrack) {
+        message = lastTrackPhrases[Math.floor(Math.random() * lastTrackPhrases.length)];
+      } else {
+        message = basePhrases[Math.floor(Math.random() * basePhrases.length)];
+      }
+
+      if (isShuffled && !isSingleTrack) {
+        message += ` ${shufflePhrases[Math.floor(Math.random() * shufflePhrases.length)]}`;
+      } else if (isRepeat) {
+        message += ` ${repeatPhrases[Math.floor(Math.random() * repeatPhrases.length)]}`;
+      }
+
+      message = `Track ${trackNum}/${totalTracks}: ${message}`;
+      showHostBubble(message);
+    }
+
+    function showHostBubble(message) {
+      const bubble = document.getElementById('host-bubble');
+      bubble.textContent = message;
+      bubble.style.display = 'flex';
+      if (isHostEnabled && !isMuted) {
+        const utterance = new SpeechSynthesisUtterance(message);
+        utterance.rate = 1.0;
+        utterance.pitch = 1.2;
+        utterance.volume = 0.8;
+        const voices = speechSynthesis.getVoices();
+        const friendlyVoice = voices.find(voice => voice.name.includes('Google') || voice.name.includes('Microsoft') || voice.default) || voices[0];
+        utterance.voice = friendlyVoice;
+        speechSynthesis.speak(utterance);
+      }
+      setTimeout(() => {
+        bubble.style.display = 'none';
+      }, 5000);
+    }
+
+    function toggleHost() {
+      isHostEnabled = !isHostEnabled;
+      document.querySelector('.host-toggle').textContent = `AI Host 🍒 ${isHostEnabled ? 'On' : 'Off'}`;
+      if (!isHostEnabled) {
+        document.getElementById('host-bubble').style.display = 'none';
+      }
+    }
+
+    speechSynthesis.onvoiceschanged = () => {
+      // Ensure voices are loaded
+    };
+
+    // Queue setup
+    function updateQueueDisplay() {
+      const queueDiv = document.getElementById('queue');
+      queueDiv.innerHTML = '<strong>Queue:</strong>';
+      if (playlist.length === 0) return;
+
+      let queue = [];
+      let nextIndex = currentTrackIndex;
+      if (isRepeat) {
+        queue.push({ index: currentTrackIndex, videoId: playlist[currentTrackIndex] });
+      } else {
+        for (let i = 0; i < Math.min(5, playlist.length); i++) {
+          if (isShuffled) {
+            nextIndex = Math.floor(Math.random() * playlist.length);
+          } else {
+            nextIndex = (nextIndex + 1) % playlist.length;
+          }
+          queue.push({ index: nextIndex, videoId: playlist[nextIndex] });
+        }
+      }
+
+      queue.forEach(({ index }) => {
+        const trackDiv = document.createElement('div');
+        trackDiv.textContent = `Track ${index + 1}/${playlist.length}`;
+        queueDiv.appendChild(trackDiv);
+      });
+    }
+
+    // Pomodoro setup
+    let pomodoroInterval = null;
+    let isWorkSession = true;
+    let timeLeft = 25 * 60;
+
+    function updatePomodoroDisplay() {
+      const minutes = Math.floor(timeLeft / 60);
+      const seconds = timeLeft % 60;
+      document.getElementById('pomodoro-timer').textContent = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+      document.getElementById('pomodoro-status').textContent = isWorkSession ? 'Work Session 🍒' : 'Break Time 🍒';
+    }
+
+    function startPomodoro() {
+      if (pomodoroInterval) return;
+      pomodoroInterval = setInterval(() => {
+        timeLeft--;
+        if (timeLeft <= 0) {
+          isWorkSession = !isWorkSession;
+          timeLeft = isWorkSession ? 25 * 60 : 5 * 60;
+          alert(isWorkSession ? 'Work session started! 🍒' : 'Break time! 🍒');
+        }
+        updatePomodoroDisplay();
+      }, 1000);
+    }
+
+    function resetPomodoro() {
+      clearInterval(pomodoroInterval);
+      pomodoroInterval = null;
+      isWorkSession = true;
+      timeLeft = 25 * 60;
+      updatePomodoroDisplay();
+    }
+
+    function showPopup(type) {
+      document.getElementById('login-popup').style.display = type === 'login' ? 'flex' : 'none';
+      document.getElementById('signup-popup').style.display = type === 'signup' ? 'flex' : 'none';
+      document.getElementById('pomodoro-popup').style.display = type === 'pomodoro' ? 'flex' : 'none';
+      if (type === 'pomodoro') updatePomodoroDisplay();
+    }
+
+    function closePopup() {
+      document.getElementById('login-popup').style.display = 'none';
+      document.getElementById('signup-popup').style.display = 'none';
+      document.getElementById('pomodoro-popup').style.display = 'none';
+    }
+
+    function handleLogin() {
+      const username = document.getElementById('login-username').value;
+      const password = document.getElementById('login-password').value;
+      console.log(`Login: Username/Email=${username}, Password=${password}`);
+      closePopup();
+    }
+
+    function handleSignUp() {
+      const username = document.getElementById('signup-username').value;
+      const email = document.getElementById('signup-email').value;
+      const password = document.getElementById('signup-password').value;
+      const confirmPassword = document.getElementById('signup-confirm-password').value;
+      if (password === confirmPassword) {
+        console.log(`Sign Up: Username=${username}, Email=${email}, Password=${password}`);
+        closePopup();
+      } else {
+        alert('Passwords do not match!');
+      }
+    }
+
+    function onYouTubeIframeAPIReady() {
+      player = new YT.Player('player-container', {
+        height: '0',
+        width: '0',
+        events: {
+          'onReady': onPlayerReady,
+          'onStateChange': onPlayerStateChange
+        }
+      });
+    }
+
+    function onPlayerReady(event) {
+      applyEqualizer();
+      applyHiFi();
+      setInterval(updateSeekBar, 1000);
+      initVisualizer();
+      drawVisualizer();
+    }
+
+    function onPlayerStateChange(event) {
+      if (event.data === YT.PlayerState.ENDED) {
+        if (isRepeat) {
+          loadTrack(playlist[currentTrackIndex]);
+        } else {
+          nextTrack();
+        }
+      } else if (event.data === YT.PlayerState.PLAYING) {
+        duration = player.getDuration();
+        isPlaying = true;
+        document.getElementById('current-track').textContent = `Playing: Track ${currentTrackIndex + 1}/${playlist.length}`;
+        hostSpeak();
+        updateQueueDisplay();
+      } else if (event.data === YT.PlayerState.PAUSED || event.data === YT.PlayerState.STOPPED) {
+        isPlaying = false;
+      }
+    }
+
+    function extractVideoId(url) {
+      const regex = /(?:v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+      const match = url.match(regex);
+      return match ? match[1] : null;
+    }
+
+    function extractPlaylistId(url) {
+      const regex = /list=([a-zA-Z0-9_-]+)/;
+      const match = url.match(regex);
+      return match ? match[1] : null;
+    }
+
+    async function fetchPlaylistVideos(playlistId) {
+      // Simulated playlist fetching
+      const videoIds = [extractVideoId(document.getElementById('youtube-url').value) || 'dQw4w9WgXcQ'];
+      return videoIds;
+    }
+
+    async function loadMusic() {
+      const url = document.getElementById('youtube-url').value;
+      const videoId = extractVideoId(url);
+      const playlistId = extractPlaylistId(url);
+
+      if (playlistId) {
+        playlist = await fetchPlaylistVideos(playlistId);
+        currentTrackIndex = 0;
+        loadTrack(playlist[currentTrackIndex]);
+        updatePlaylistDisplay();
+        updateQueueDisplay();
+      } else if (videoId) {
+        playlist = [videoId];
+        currentTrackIndex = 0;
+        loadTrack(videoId);
+        updatePlaylistDisplay();
+        updateQueueDisplay();
+      } else {
+        alert('Invalid YouTube URL');
+      }
+    }
+
+    function loadTrack(videoId) {
+      player.loadVideoById({
+        videoId: videoId,
+        suggestedQuality: document.getElementById('hifi-mode').checked ? 'highres' : 'default'
+      });
+      document.getElementById('current-track').textContent = `Playing: Track ${currentTrackIndex + 1}/${playlist.length}`;
+      isPlaying = true;
+      updateQueueDisplay();
+    }
+
+    function playPause() {
+      if (isPlaying) {
+        player.pauseVideo();
+        isPlaying = false;
+      } else {
+        player.playVideo();
+        isPlaying = true;
+      }
+    }
+
+    function stop() {
+      player.stopVideo();
+      isPlaying = false;
+      document.getElementById('seek-bar').value = 0;
+    }
+
+    function previousTrack() {
+      if (playlist.length === 0) return;
+      currentTrackIndex = (currentTrackIndex - 1 + playlist.length) % playlist.length;
+      loadTrack(playlist[currentTrackIndex]);
+    }
+
+    function nextTrack() {
+      if (playlist.length === 0) return;
+      if (isRepeat) {
+        loadTrack(playlist[currentTrackIndex]);
+      } else if (isShuffled) {
+        currentTrackIndex = Math.floor(Math.random() * playlist.length);
+        loadTrack(playlist[currentTrackIndex]);
+      } else {
+        currentTrackIndex = (currentTrackIndex + 1) % playlist.length;
+        loadTrack(playlist[currentTrackIndex]);
+      }
+    }
+
+    function toggleMute() {
+      if (isMuted) {
+        player.unMute();
+        isMuted = false;
+        document.querySelector('button[onclick="toggleMute()"]').textContent = 'Mute';
+      } else {
+        player.mute();
+        isMuted = true;
+        document.querySelector('button[onclick="toggleMute()"]').textContent = 'Unmute';
+      }
+    }
+
+    function toggleShuffle() {
+      isShuffled = !isShuffled;
+      document.querySelector('button[onclick="toggleShuffle()"]').textContent = isShuffled ? 'Shuffle On' : 'Shuffle';
+      updateQueueDisplay();
+    }
+
+    function toggleRepeat() {
+      isRepeat = !isRepeat;
+      document.querySelector('button[onclick="toggleRepeat()"]').textContent = isRepeat ? 'Repeat On' : 'Repeat';
+      updateQueueDisplay();
+    }
+
+    function adjustVolume(change) {
+      const currentVolume = player.getVolume();
+      const newVolume = Math.max(0, Math.min(100, currentVolume + change));
+      player.setVolume(newVolume);
+      if (isMuted && newVolume > 0) {
+        player.unMute();
+        isMuted = false;
+        document.querySelector('button[onclick="toggleMute()"]').textContent = 'Mute';
+      }
+    }
+
+    function updateSeekBar() {
+      if (isPlaying && duration > 0) {
+        const currentTime = player.getCurrentTime();
+        const progress = (currentTime / duration) * 100;
+        document.getElementById('seek-bar').value = progress;
+      }
+    }
+
+    document.getElementById('seek-bar').addEventListener('input', function() {
+      if (duration > 0) {
+        const seekTo = (this.value / 100) * duration;
+        player.seekTo(seekTo, true);
+      }
+    });
+
+    function toggleSettings() {
+      const panel = document.getElementById('settings-panel');
+      panel.classList.toggle('show');
+    }
+
+    function applyEqualizer() {
+      const low = document.getElementById('eq-low').value;
+      const mid = document.getElementById('eq-mid').value;
+      const high = document.getElementById('eq-high').value;
+      console.log(`Equalizer: Low=${low}, Mid=${mid}, High=${high}`);
+    }
+
+    function applyHiFi() {
+      const hifi = document.getElementById('hifi-mode').checked;
+      if (isPlaying) {
+        player.setPlaybackQuality(hifi ? 'highres' : 'default');
+      }
+    }
+
+    document.getElementById('eq-low').addEventListener('input', applyEqualizer);
+    document.getElementById('eq-mid').addEventListener('input', applyEqualizer);
+    document.getElementById('eq-high').addEventListener('input', applyEqualizer);
+    document.getElementById('hifi-mode').addEventListener('change', applyHiFi);
+
+    function updatePlaylistDisplay() {
+      const playlistDiv = document.getElementById('playlist');
+      playlistDiv.innerHTML = '';
+      playlist.forEach((videoId, index) => {
+        const trackDiv = document.createElement('div');
+        trackDiv.textContent = `Track ${index + 1}/${playlist.length}`;
+        trackDiv.onclick = () => {
+          currentTrackIndex = index;
+          loadTrack(videoId);
+        };
+        playlistDiv.appendChild(trackDiv);
+      });
+    }
+  </script>
+</body>
+</html>
