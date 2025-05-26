@@ -40,1213 +40,883 @@
         </script><!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Retro Cherry Music Player</title>
-    <style>
-        body {
-            background-color: #e8b7c2;
-            font-family: 'Courier New', Courier, monospace;
-            color: #2b1a20;
-            margin: 0;
-            padding: 25px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-        }
-        .player-container {
-            background-color: #d89aa7;
-            border: 6px solid #b56b7e;
-            border-radius: 20px;
-            padding: 25px;
-            width: 420px;
-            box-shadow: 0 0 25px rgba(0, 0, 0, 0.3);
-            position: relative;
-        }
-        .player-container::before {
-            content: '🍒';
-            position: absolute;
-            top: -20px;
-            left: 20px;
-            font-size: 30px;
-        }
-        .player-container::after {
-            content: '🌸';
-            position: absolute;
-            bottom: -70px;
-            right: 20px;
-            font-size: 30px;
-        }
-        .controls, .settings, .queue, .history {
-            margin-bottom: 25px;
-        }
-        .settings button, .account-btn, .pomodoro-btn, .profile-btn {
-            background-color: #b56b7e;
-            border: 3px solid #8b3e50;
-            color: #fff0f3;
-            padding: 12px;
-            margin: 6px;
-            border-radius: 12px;
-            cursor: pointer;
-            font-family: 'Courier New', Courier, monospace;
-            font-weight: bold;
-            transition: background-color 0.3s, transform 0.1s;
-        }
-        .settings button:hover, .account-btn:hover, .pomodoro-btn:hover, .profile-btn:hover {
-            background-color: #8b3e50;
-            transform: scale(1.05);
-        }
-        .media-controls {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: space-between;
-            align-items: center;
-            background-color: #e8b7c2;
-            padding: 10px;
-            border-radius: 10px;
-            border: 2px solid #b56b7e;
-            position: relative;
-        }
-        .track-title {
-            width: 100%;
-            text-align: center;
-            margin-bottom: 10px;
-            font-size: 16px;
-            color: #2b1a20;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-        .media-controls button {
-            background-color: #b56b7e;
-            border: 2px solid #8b3e50;
-            color: #fff0f3;
-            padding: 10px;
-            border-radius: 10px;
-            cursor: pointer;
-            font-size: 14px;
-        }
-        .seek-slider, .volume-slider, .ai-volume-slider {
-            width: 100%;
-            accent-color: #b56b7e;
-            background: linear-gradient(to right, #b56b7e 0%, #b56b7e var(--value), #e8b7c2 var(--value), #e8b7c2 100%);
-        }
-        .queue, .history {
-            max-height: 160px;
-            overflow-y: auto;
-            background-color: #e8b7c2;
-            padding: 12px;
-            border-radius: 12px;
-            border: 2px solid #b56b7e;
-        }
-        .queue-item, .history-item {
-            padding: 8px;
-            cursor: pointer;
-            border-bottom: 1px dotted #b56b7e;
-        }
-        .queue-item:hover, .history-item:hover {
-            background-color: #cc8899;
-        }
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(43, 26, 32, 0.6);
-            justify-content: center;
-            align-items: center;
-        }
-        .modal-content {
-            background-color: #d89aa7;
-            padding: 25px;
-            border-radius: 20px;
-            width: 320px;
-            text-align: center;
-            border: 3px solid #b56b7e;
-        }
-        .modal-content input {
-            margin: 12px 0;
-            padding: 10px;
-            width: 85%;
-            border: 2px solid #b56b7e;
-            border-radius: 10px;
-            background-color: #e8b7c2;
-            color: #2b1a20;
-        }
-        .equalizer {
-            display: flex;
-            justify-content: space-around;
-            margin: 15px 0;
-        }
-        .equalizer input {
-            height: 120px;
-            transform: rotate(-90deg);
-            accent-color: #b56b7e;
-        }
-        .pomodoro-timer {
-            font-size: 28px;
-            margin: 12px 0;
-            color: #2b1a20;
-        }
-        .hifi-toggle, .ad-mute-toggle, .ai-volume-control {
-            margin: 15px 0;
-        }
-        .hifi-toggle input, .ad-mute-toggle input {
-            accent-color: #b56b7e;
-        }
-        input[type="text"], input[type="password"], input[type="email"] {
-            font-family: 'Courier New', Courier, monospace;
-        }
-        button {
-            font-size: 14px;
-        }
-        .account-toggle {
-            margin: 10px 0;
-            color: #2b1a20;
-            cursor: pointer;
-            text-decoration: underline;
-        }
-        .account-toggle:hover {
-            color: #8b3e50;
-        }
-        .profile-info {
-            text-align: left;
-            margin: 15px 0;
-        }
-        .profile-info p {
-            margin: 5px 0;
-        }
-        .cherry-bubble {
-            position: absolute;
-            top: -120px;
-            left: 50%;
-            transform: translateX(-50%);
-            background-color: #fff0f3;
-            border: 2px solid #b56b7e;
-            border-radius: 15px;
-            padding: 8px;
-            width: 200px;
-            text-align: center;
-            font-size: 14px;
-            color: #2b1a20;
-            display: none;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-            animation: float 1.5s ease-in-out infinite;
-        }
-        .cherry-bubble::after {
-            content: '';
-            position: absolute;
-            bottom: -10px;
-            left: 50%;
-            transform: translateX(-50%);
-            border-left: 10px solid transparent;
-            border-right: 10px solid transparent;
-            border-top: 10px solid #b56b7e;
-        }
-        .sunny-bubble {
-            position: absolute;
-            bottom: -120px;
-            left: 50%;
-            transform: translateX(-50%);
-            background-color: #fff0f3;
-            border: 2px solid #b56b7e;
-            border-radius: 15px;
-            padding: 8px;
-            width: 200px;
-            text-align: center;
-            font-size: 14px;
-            color: #2b1a20;
-            display: none;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-            animation: float 1.5s ease-in-out infinite;
-        }
-        .sunny-bubble::after {
-            content: '';
-            position: absolute;
-            top: -10px;
-            left: 50%;
-            transform: translateX(-50%);
-            border-left: 10px solid transparent;
-            border-right: 10px solid transparent;
-            border-bottom: 10px solid #b56b7e;
-        }
-        @keyframes float {
-            0%, 100% { transform: translate(-50%, 0); }
-            50% { transform: translate(-50%, -10px); }
-        }
-        .ad-mute-indicator {
-            position: absolute;
-            top: 10px;
-            right: 20px;
-            font-size: 24px;
-            color: #8b3e50;
-            display: none;
-        }
-        .ad-mute-indicator.active {
-            display: block;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Retro YouTube Music Player</title>
+  <link href="./src/output.css" rel="stylesheet">
+  <script src="https://www.youtube.com/iframe_api"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <style>
+    body {
+      background-color: #f8c3c3;
+      font-family: 'Press Start 2P', monospace;
+      image-rendering: pixelated;
+      margin: 0;
+      padding: 15px;
+    }
+    .container {
+      background-color: #d89393;
+      border: 4px solid #c94b4b;
+      border-radius: 16px;
+      padding: 15px;
+      max-width: 500px;
+      margin: 0 auto;
+      box-shadow: 4px 4px 0 #2d1a1a;
+      position: relative;
+    }
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 15px;
+    }
+    .retro-button {
+      background-color: #d89393;
+      border: 2px solid #c94b4b;
+      color: #2d1a1a;
+      padding: 8px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 11px;
+      text-transform: uppercase;
+      position: relative;
+      overflow: hidden;
+    }
+    .retro-button::before {
+      content: '🍒';
+      position: absolute;
+      left: -10px;
+      top: 50%;
+      transform: translateY(-50%);
+      opacity: 0.4;
+    }
+    .retro-button::after {
+      content: '🌸';
+      position: absolute;
+      right: -10px;
+      top: 50%;
+      transform: translateY(-50%);
+      opacity: 0.4;
+    }
+    .retro-button:hover {
+      background-color: #e6b8b8;
+    }
+    .input-section {
+      text-align: center;
+      margin-bottom: 15px;
+    }
+    input[type="text"] {
+      background-color: #f8c3c3;
+      border: 2px solid #c94b4b;
+      border-radius: 8px;
+      padding: 8px;
+      font-size: 11px;
+      width: 70%;
+      margin-right: 8px;
+    }
+    .media-controls {
+      text-align: center;
+      margin-bottom: 15px;
+    }
+    .media-controls .buttons {
+      margin-bottom: 8px;
+    }
+    .media-controls .seek-bar {
+      width: 100%;
+      margin-bottom: 8px;
+    }
+    input[type="range"] {
+      -webkit-appearance: none;
+      background: #c94b4b;
+      border-radius: 4px;
+      height: 10px;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 20px;
+      height: 20px;
+      background: #d89393;
+      border: 2px solid #c94b4b;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+    .queue-history {
+      margin-bottom: 8px;
+    }
+    .queue-history h2 {
+      font-size: 12px;
+      margin-bottom: 8px;
+      position: relative;
+    }
+    .queue-history h2::after {
+      content: ' 🍒🌸';
+      position: absolute;
+      right: 0;
+    }
+    .queue-history ul {
+      list-style: none;
+      padding: 0;
+      max-height: 100px;
+      overflow-y: auto;
+      font-size: 9px;
+    }
+    .popup {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background-color: #d89393;
+      padding: 20px;
+      border: 4px solid #c94b4b;
+      border-radius: 16px;
+      box-shadow: 4px 4px 0 #2d1a1a;
+      z-index: 1000;
+    }
+    .popup-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 999;
+    }
+    .playing {
+      animation: blink 1s infinite;
+    }
+    @keyframes blink {
+      50% { opacity: 0.6; }
+    }
+    .toggle-switch {
+      position: relative;
+      display: inline-block;
+      width: 48px;
+      height: 24px;
+    }
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #c94b4b;
+      transition: 0.4s;
+      border-radius: 24px;
+    }
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 20px;
+      width: 20px;
+      left: 2px;
+      bottom: 2px;
+      background-color: #d89393;
+      transition: 0.4s;
+      border-radius: 50%;
+    }
+    input:checked + .slider {
+      background-color: #e6b8b8;
+    }
+    input:checked + .slider:before {
+      transform: translateX(24px);
+    }
+    .radio-host-bubble {
+      position: absolute;
+      top: -60px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: #e6b8b8;
+      border: 2px solid #c94b4b;
+      border-radius: 8px;
+      padding: 10px;
+      font-size: 9px;
+      max-width: 300px;
+      text-align: center;
+      box-shadow: 2px 2px 0 #2d1a1a;
+      z-index: 1001;
+      animation: fadeIn 1s;
+    }
+    .radio-host-bubble::after {
+      content: '';
+      position: absolute;
+      bottom: -10px;
+      left: 50%;
+      transform: translateX(-50%);
+      border-left: 10px solid transparent;
+      border-right: 10px solid transparent;
+      border-top: 10px solid #c94b4b;
+    }
+    .psychiatrist-bubble {
+      position: fixed;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: #e6b8b8;
+      border: 2px solid #c94b4b;
+      border-radius: 8px;
+      padding: 10px;
+      font-size: 9px;
+      max-width: 300px;
+      text-align: center;
+      box-shadow: 2px 2px 0 #2d1a1a;
+      z-index: 1001;
+      animation: fadeIn 1s;
+    }
+    .psychiatrist-bubble::before {
+      content: '';
+      position: absolute;
+      top: -10px;
+      left: 50%;
+      transform: translateX(-50%);
+      border-left: 10px solid transparent;
+      border-right: 10px solid transparent;
+      border-bottom: 10px solid #c94b4b;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+  </style>
 </head>
 <body>
-<div class="player-container">
-    <div class="cherry-bubble" id="cherry-bubble"></div>
-    <div class="sunny-bubble" id="sunny-bubble"></div>
-    <div class="settings">
-        <button class="settings-btn">Settings 🍒</button>
-        <button class="pomodoro-btn">Pomodoro 🌸</button>
-        <button class="account-btn">Account 🍒</button>
-        <button class="profile-btn">Profile 🌸</button>
+  <div class="container">
+    <!-- Grok 3 Radio Host Bubble (Top) -->
+    <div id="radioHostBubble" class="radio-host-bubble hidden">🎵 Greetings, music lovers! This is your charming AI radio host, Grok 3, spinning the tunes! Get ready for a groovy ride! 🍒🌸</div>
+
+    <!-- Top Bar -->
+    <div class="top-bar">
+      <button id="profileBtn" class="retro-button">Profile 🍒🌸</button>
+      <button id="settingsBtn" class="retro-button">Settings 🍒🌸</button>
+      <button id="pomodoroBtn" class="retro-button">Pomodoro 🍒🌸</button>
+      <button id="loginSignupBtn" class="retro-button">Login 🍒🌸</button>
     </div>
-    <input type="text" id="playlist-url" placeholder="YouTube Playlist/Video URL">
-    <button onclick="loadPlaylist()">Load Playlist 🌸</button>
+
+    <!-- URL Input -->
+    <div class="input-section">
+      <input id="urlInput" type="text" placeholder="YouTube Playlist/Video 🍒🌸" class="retro-border">
+      <button id="loadUrl" class="retro-button">Load 🍒🌸</button>
+    </div>
+
+    <!-- Player Controls -->
+    <div id="player" class="hidden"></div>
     <div class="media-controls">
-        <div class="track-title" id="track-title">No Track Loaded</div>
-        <button onclick="playPrevious()">Previous 🍒</button>
-        <button onclick="playPause()">Play/Pause 🌸</button>
-        <button onclick="playNext()">Next 🍒</button>
-        <input type="range" class="seek-slider" min="0" max="100" value="0">
-        <button onclick="toggleLoop()">Loop 🌸</button>
-        <button onclick="toggleShuffle()">Shuffle 🍒</button>
-        <input type="range" class="volume-slider" min="0" max="100" value="50">
-        <div class="ad-mute-indicator" id="ad-mute-indicator">🔇</div>
+      <div id="currentSong" class="text-center mb-2 font-bold text-lg">No Track Loaded 🍒🌸</div>
+      <div class="buttons">
+        <button id="prevBtn" class="retro-button">Previous 🍒</button>
+        <button id="playPauseBtn" class="retro-button">Play/Pause 🌸</button>
+        <button id="nextBtn" class="retro-button">Next 🍒</button>
+      </div>
+      <div class="seek-bar">
+        <input type="range" id="seekSlider" min="0" max="100" value="0">
+      </div>
     </div>
-    <div class="queue">
-        <h3>Queue 🍒</h3>
-        <div id="queue-list"></div>
-    </div>
-    <div class="history">
-        <h3>History 🌸</h3>
-        <div id="history-list"></div>
-    </div>
-    <div id="youtube-player" style="display: none;"></div>
-</div>
 
-<!-- Settings Modal (Equalizer + Hi-Fi + Ad Mute + AI Volume) -->
-<div id="settings-modal" class="modal">
-    <div class="modal-content">
-        <h3>Settings 🍒</h3>
-        <h4>Equalizer 🌸</h4>
-        <div class="equalizer">
-            <input type="range" min="-12" max="12" value="0" class="eq-slider" id="eq-bass">
-            <input type="range" min="-12" max="12" value="0" class="eq-slider" id="eq-mid">
-            <input type="range" min="-12" max="12" value="0" class="eq-slider" id="eq-treble">
-        </div>
-        <div class="hifi-toggle">
-            <label for="hifi-mode">Hi-Fi Mode 🍒:</label>
-            <input type="checkbox" id="hifi-mode">
-        </div>
-        <div class="ad-mute-toggle">
-            <label for="ad-mute">Mute Ads 🌸:</label>
-            <input type="checkbox" id="ad-mute" checked>
-        </div>
-        <div class="ai-volume-control">
-            <label for="ai-volume">AI Hosts Volume 🍒:</label>
-            <input type="range" class="ai-volume-slider" id="ai-volume" min="0" max="100" value="100">
-        </div>
-        <button onclick="closeModal('settings-modal')">Close 🌸</button>
+    <!-- Queue and History -->
+    <div class="queue-history">
+      <h2>Queue 🍒</h2>
+      <ul id="queueList"></ul>
     </div>
-</div>
-
-<!-- Pomodoro Modal -->
-<div id="pomodoro-modal" class="modal">
-    <div class="modal-content">
-        <h3>Pomodoro Timer 🍒</h3>
-        <div class="pomodoro-timer" id="pomodoro-timer">25:00</div>
-        <button onclick="startPomodoro()">Start 🌸</button>
-        <button onclick="resetPomodoro()">Reset 🍒</button>
-        <button onclick="closeModal('pomodoro-modal')">Close 🌸</button>
+    <div class="queue-history">
+      <h2>History 🌸</h2>
+      <ul id="historyList"></ul>
     </div>
-</div>
+  </div>
 
-<!-- Account Modal (Login/Sign Up) -->
-<div id="account-modal" class="modal">
-    <div class="modal-content">
-        <h3 id="account-title">Login 🍒</h3>
-        <div id="login-form">
-            <input type="text" id="login-username" placeholder="Username">
-            <input type="password" id="login-password" placeholder="Password">
-            <button onclick="login()">Submit 🌸</button>
-            <div class="account-toggle" onclick="toggleAccountForm()">Switch to Sign Up 🍒</div>
-        </div>
-        <div id="signup-form" style="display: none;">
-            <input type="text" id="signup-username" placeholder="Username">
-            <input type="email" id="signup-email" placeholder="Email">
-            <input type="password" id="signup-password" placeholder="Password">
-            <button onclick="signup()">Submit 🌸</button>
-            <div class="account-toggle" onclick="toggleAccountForm()">Switch to Login 🍒</div>
-        </div>
-        <button onclick="closeModal('account-modal')">Close 🌸</button>
+  <!-- Dr. Melody Psychiatrist Bubble (Bottom) -->
+  <div id="psychiatristBubble" class="psychiatrist-bubble hidden">🧠 Hello, dear listener! I’m Dr. Melody, your musical therapist. Let’s explore how these tunes resonate with your soul! 🍒🌸</div>
+
+  <!-- Popups -->
+  <div id="authPopup" class="popup">
+    <h2 id="authTitle" class="text-center font-bold mb-3 text-sm">Login 🍒🌸</h2>
+    <button id="toggleAuth" class="retro-button w-full mb-3">Switch to Sign Up 🍒🌸</button>
+    <input id="authEmail" type="email" placeholder="Email 🍒🌸" class="w-full mb-3">
+    <input id="authPassword" type="password" placeholder="Password 🌸🍒" class="w-full mb-3">
+    <button id="submitAuth" class="retro-button w-full mb-3">Login 🍒🌸</button>
+    <button id="closeAuth" class="retro-button w-full">Close 🌸🍒</button>
+  </div>
+  <div id="profilePopup" class="popup">
+    <h2 class="text-center font-bold mb-3 text-sm">Profile 🍒🌸</h2>
+    <p class="mb-3">User: Guest 🍒🌸</p>
+    <button id="signOutBtn" class="retro-button w-full mb-3">Sign Out 🍒🌸</button>
+    <button id="closeProfile" class="retro-button w-full">Close 🌸🍒</button>
+  </div>
+  <div id="settingsPopup" class="popup">
+    <h2 class="text-center font-bold mb-3 text-sm">Settings 🍒🌸</h2>
+    <h3 class="font-bold mb-3">Audio Settings 🍒🌸</h3>
+    <div class="flex items-center mb-3">
+      <label class="text-xs mr-3">Mute YouTube Ads 🍒🌸</label>
+      <label class="toggle-switch">
+        <input type="checkbox" id="muteAdToggle" checked>
+        <span class="slider"></span>
+      </label>
     </div>
-</div>
-
-<!-- Profile Modal -->
-<div id="profile-modal" class="modal">
-    <div class="modal-content">
-        <h3>Profile 🍒</h3>
-        <div class="profile-info">
-            <p><strong>Username 🌸:</strong> <span id="profile-username">Guest</span></p>
-            <p><strong>Email 🍒:</strong> <span id="profile-email">guest@example.com</span></p>
-            <p><strong>Favorite Tracks 🌸:</strong> <span id="profile-favorites">Track 1, Track 2</span></p>
-        </div>
-        <button onclick="closeModal('profile-modal')">Close 🌸</button>
+    <div class="flex items-center mb-3">
+      <label class="text-xs mr-3">HiFi Mode 🌸🍒</label>
+      <label class="toggle-switch">
+        <input type="checkbox" id="hifiModeToggle">
+        <span class="slider"></span>
+      </label>
     </div>
-</div>
+    <h3 class="font-bold mb-3">Equalizer 🍒🌸</h3>
+    <div class="flex space-x-3 mb-3">
+      <div>
+        <label class="text-xs">Bass 🍒🌸</label>
+        <input type="range" id="bass" min="-12" max="12" value="0" class="w-full">
+      </div>
+      <div>
+        <label class="text-xs">Mid 🌸🍒</label>
+        <input type="range" id="mid" min="-12" max="12" value="0" class="w-full">
+      </div>
+      <div>
+        <label class="text-xs">Treble 🍒🌸</label>
+        <input type="range" id="treble" min="-12" max="12" value="0" class="w-full">
+      </div>
+    </div>
+    <button id="closeSettings" class="retro-button w-full">Close 🌸🍒</button>
+  </div>
+  <div id="pomodoroPopup" class="popup">
+    <h2 class="text-center font-bold mb-3 text-sm">Pomodoro Timer 🍒🌸</h2>
+    <div id="pomodoroTime" class="text-center mb-3 text-sm">25:00 🍒🌸</div>
+    <div class="flex justify-center space-x-3 mb-3">
+      <button id="pomodoroStart" class="retro-button">Start 🍒🌸</button>
+      <button id="pomodoroReset" class="retro-button">Reset 🌸🍒</button>
+    </div>
+    <div class="flex flex-wrap gap-3">
+      <label class="text-xs">Work (min): 🍒🌸</label>
+      <input id="pomodoroWork" type="number" value="25" class="w-20 p-2">
+      <label class="text-xs">Break (min): 🌸🍒</label>
+      <input id="pomodoroBreak" type="number" value="5" class="w-20 p-2">
+    </div>
+    <button id="closePomodoro" class="retro-button mt-3 w-full">Close 🌸🍒</button>
+  </div>
+  <div id="popupOverlay" class="popup-overlay"></div>
 
-<script src="https://www.youtube.com/iframe_api"></script>
-<script>
+  <script>
     let player;
     let playlist = [];
     let history = [];
-    let currentIndex = 0;
+    let currentIndex = -1;
     let isLooping = false;
     let isShuffling = false;
-    let pomodoroInterval;
-    let pomodoroTime = 25 * 60;
-    let userProfile = {
-        username: 'Guest',
-        email: 'guest@example.com',
-        favorites: ['Track 1', 'Track 2']
-    };
+    let isLoginMode = true;
+    let isAdMuted = true; // Enabled by default
+    let isHifiMode = false;
     let isAdPlaying = false;
-    let originalVolume = 50;
-    let isAdMuteEnabled = true;
-    let aiHostVolume = 100;
-
-    const aiHostCherry = {
-        name: 'Dr. CherryBlossom, PsyD',
-        voice: null,
-        showSpeechBubble: (message, isInteraction = false) => {
-            if (Math.random() * 100 > aiHostVolume) return;
-            const bubble = document.getElementById('cherry-bubble');
-            bubble.textContent = `${aiHostCherry.name}: ${message}`;
-            bubble.style.display = 'block';
-            speak(message, aiHostCherry.voice);
-            setTimeout(() => {
-                bubble.style.display = 'none';
-            }, 5000);
-            if (!isInteraction) {
-                setTimeout(() => aiHostSunny.respondToCherry(message, action), 1000);
-            }
-        },
-        introduceTrack: (trackTitle) => {
-            const messages = [
-                `Choosing ${trackTitle} suggests a desire for rhythm in your life. How does this tune resonate with you today? 🍒`,
-                `Ah, ${trackTitle}! This selection might reflect a need for energy. What draws you to this vibe? 🌸`,
-                `${trackTitle} is a bold choice! It’s like a window into your mood. Care to share what’s sparking this? 🍒`,
-                `Spinning ${trackTitle} feels like a moment of self-expression. How’s this track speaking to your soul? 🌸`,
-                `With ${trackTitle}, you’re curating your emotional landscape. What’s this song unlocking for you? 🍒`,
-                `${trackTitle} on the air! This feels like a personal anthem. What’s the story behind this pick? 🌸`,
-                `Playing ${trackTitle} is a statement. How does it align with your inner world right now? 🍒`,
-                `${trackTitle} sets a unique tone. What emotions are you exploring with this choice? 🍒`,
-                `This ${trackTitle} pick feels intentional. How’s it shaping your day? 🌸`
-            ];
-            const message = messages[Math.floor(Math.random() * messages.length)];
-            action = 'introduceTrack';
-            aiHostCherry.showSpeechBubble(message);
-        },
-        commentOnAction: (action, username) => {
-            const messages = {
-                play: [
-                    `Starting playback shows initiative! What emotions are you hoping to explore with this music? 🍒`,
-                    `Pressing play is a step toward mindfulness. How does this music make you feel right now? 🌸`,
-                    `You’re diving into the music! What’s the mood you’re setting with this play? 🍒`,
-                    `Hitting play is like opening a door to your soul. What’s waiting inside? 🌸`,
-                    `Play engaged! This choice feels vibrant—how’s it lifting your spirit? 🍒`,
-                    `You’ve sparked the music! What’s this play revealing about your mood? 🌸`
-                ],
-                pause: [
-                    `Pausing the track—perhaps a moment to reflect? What’s on your mind during this silence? 🍒`,
-                    `A pause can be powerful. Are you taking a moment to process or just savoring the quiet? 🌸`,
-                    `Pausing feels intentional. What thoughts are surfacing in this stillness? 🍒`,
-                    `You’ve hit pause. Is this a breather or a chance to reset your focus? 🌸`,
-                    `This pause is a space for clarity. What’s emerging in this quiet moment? 🍒`,
-                    `Pausing the beat—time for introspection? What’s stirring within? 🌸`
-                ],
-                next: [
-                    `Skipping to the next track suggests curiosity! What new feelings are you chasing? 🍒`,
-                    `Moving forward to another song—embracing change? What’s inspiring this shift? 🌸`,
-                    `Next track, new vibe! What’s driving your urge to explore? 🍒`,
-                    `You’re switching it up! How does this next song fit your journey? 🌸`,
-                    `Next song, bold move! What’s the next chapter in your musical story? 🍒`,
-                    `Advancing to the next track—craving something fresh? What’s the draw? 🌸`
-                ],
-                previous: [
-                    `Revisiting a past track shows nostalgia. What memories does this song bring up for you? 🍒`,
-                    `Going back to a previous tune—seeking comfort in the familiar? Tell me more! 🌸`,
-                    `Backtracking to this song feels sentimental. What’s the pull here? 🍒`,
-                    `You’re revisiting an old favorite. What emotions are tied to this track? 🌸`,
-                    `Rewinding to this track—yearning for the past? What’s this song evoking? 🍒`,
-                    `Back to a classic! How’s this throwback resonating today? 🌸`
-                ],
-                loop: [
-                    `Looping this track indicates attachment. What about this song keeps you coming back? 🍒`,
-                    `Repeating a song can be soothing. How does this loop make you feel grounded? 🌸`,
-                    `You’re looping this gem! What’s the magic in this track for you? 🍒`,
-                    `Keeping this song on repeat feels comforting. What’s it anchoring for you? 🌸`,
-                    `Loop mode on! This track’s got a hold on you—why’s it so special? 🍒`,
-                    `Repeating this tune? It’s like a musical hug—how’s it feeling? 🌸`
-                ],
-                shuffle: [
-                    `Shuffling the playlist embraces spontaneity! How do you feel about letting chance guide your music? 🍒`,
-                    `Mixing it up with shuffle—open to surprises? What’s the mood you’re hoping to discover? 🌸`,
-                    `Shuffle mode on! You’re ready for anything. What’s the vibe you’re craving? 🍒`,
-                    `Shuffling feels adventurous! What surprises are you hoping to uncover? 🌸`,
-                    `Randomizing the tracks? You’re embracing the unknown—what’s next? 🍒`,
-                    `Shuffle’s your style! How’s this unpredictability sparking joy? 🌸`
-                ],
-                queueSelect: [
-                    `Selecting a track from the queue shows intention. What made this song the right choice now? 🍒`,
-                    `Picking a specific track is a form of self-expression. How does this choice reflect your mood? 🌸`,
-                    `You’ve chosen this track with purpose. What’s the story behind this pick? 🍒`,
-                    `This queue selection feels personal. How’s this song speaking to you? 🌸`,
-                    `Hand-picking this track? You’re crafting your vibe—what’s the inspiration? 🍒`,
-                    `Queue choice on point! How’s this song aligning with your soul? 🌸`
-                ],
-                pomodoroStart: [
-                    `Starting a Pomodoro session is a commitment to focus. What goals are you nurturing today? 🍒`,
-                    `Embracing a Pomodoro timer shows discipline. How do you feel this will support your productivity? 🌸`,
-                    `Pomodoro time! You’re carving out space for progress. What’s your focus today? 🍒`,
-                    `Launching a Pomodoro session is empowering. What’s driving your motivation? 🌸`,
-                    `25 minutes of focus? You’re setting the stage for success—what’s the plan? 🍒`,
-                    `Pomodoro activated! How’s this focus time shaping your day? 🌸`
-                ],
-                login: (username) => [
-                    `Welcome back, ${username}! Returning here feels like a safe space. What brings you back today? 🍒`,
-                    `Good to see you, ${username}! Logging in suggests connection. How can I support your journey? 🌸`,
-                    `Hey ${username}, you’re back! What’s the mood you’re bringing today? 🍒`,
-                    `${username}, logging in is like coming home. What’s on your mind? 🌸`,
-                    `${username}, you’re here again! What’s sparking your return? 🍒`,
-                    `Welcome, ${username}! What’s the vibe you’re chasing today? 🌸`
-                ],
-                signup: (username) => [
-                    `Welcome, ${username}! Joining us is a brave step. What inspired you to start this musical journey? 🍒`,
-                    `New face, ${username}! Signing up reflects curiosity. How do you hope music will enrich your life? 🌸`,
-                    `${username}, you’re in! What sparked your decision to join the vibe? 🍒`,
-                    `Big welcome, ${username}! Signing up is a bold move. What’s your musical story? 🌸`,
-                    `${username}, new listener alert! What’s fueling your musical adventure? 🍒`,
-                    `Hello, ${username}! Joining us is exciting—what’s your first musical goal? 🌸`
-                ],
-                profile: [
-                    `Checking your profile is a moment of self-reflection. What do you value about your musical identity? 🍒`,
-                    `Exploring your profile shows self-awareness. How do these favorite tracks define you? 🌸`,
-                    `Peeking at your profile? You’re embracing your unique vibe! What’s special about it? 🍒`,
-                    `Your profile tells a story. How do these tracks shape who you are? 🌸`,
-                    `Profile check-in feels personal. What do these tracks say about you? 🍒`,
-                    `You’re diving into your profile! How’s your musical journey evolving? 🌸`
-                ],
-                adMute: [
-                    `Muting ads creates a calmer space. How does this quiet moment feel for you? 🍒`,
-                    `Silencing those ads—prioritizing your peace! What’s the vibe you’re cultivating now? 🌸`,
-                    `Ads muted; you’re in control. How does this choice empower your listening experience? 🍒`,
-                    `No ad distractions here. How does this clarity enhance your connection to the music? 🌸`,
-                    `Muted ads for a smoother ride. How’s this tranquility boosting your mood? 🍒`,
-                    `You’ve silenced the noise! What does this calm mean for your music experience? 🌸`,
-                    `Ads off, serenity on. How’s this peace shaping your musical journey? 🍒`,
-                    `No ads, just you and the music. What’s this focus bringing out? 🌸`
-                ],
-                pomodoroEnd: [
-                    `Pomodoro complete! Reflect on your progress—how do you feel now? 🍒`,
-                    `You’ve finished a Pomodoro! What insights did this focus time bring? 🌸`,
-                    `Pomodoro done! How’s this achievement shaping your day? 🍒`,
-                    `Focus session complete! What’s next on your journey? 🌸`
-                ]
-            };
-            let message;
-            if (typeof messages[action] === 'function') {
-                message = messages[action](username)[Math.floor(Math.random() * messages[action].length)];
-            } else {
-                message = messages[action][Math.floor(Math.random() * messages[action].length)];
-            }
-            aiHostCherry.showSpeechBubble(message);
-        },
-        respondToSunny: (sunnyMessage, action) => {
-            const messages = {
-                introduceTrack: [
-                    `SunnyVibe, your enthusiasm for this track is contagious! How’s it uplifting our listener? 🍒`,
-                    `Love your energy, SunnyVibe! What’s the emotional spark in this song for our listener? 🌸`,
-                    `SunnyVibe, you’re hyping this track perfectly! How’s it resonating with our listener’s soul? 🍒`,
-                    `Great vibe, SunnyVibe! How’s this song shaping our listener’s mood today? 🌸`,
-                    `SunnyVibe, you’re all in on this tune! What’s the magic it’s weaving for our listener? 🍒`
-                ],
-                play: [
-                    `SunnyVibe, your excitement for this play is infectious! How’s it lifting our listener’s mood? 🍒`,
-                    `You’re right, SunnyVibe, this play’s a vibe! What emotions is it stirring for our listener? 🌸`,
-                    `SunnyVibe, you’re amping up this play! How’s it connecting with our listener’s energy? 🍒`,
-                    `Love the hype, SunnyVibe! What’s this play unlocking for our listener? 🌸`,
-                    `SunnyVibe, you’re all over this play! How’s it sparking joy for our listener? 🍒`
-                ],
-                pause: [
-                    `SunnyVibe, you see this pause as a breather? I think it’s a moment for reflection—thoughts? 🍒`,
-                    `Interesting take, SunnyVibe! This pause might be a chance to process—what’s our listener feeling? 🌸`,
-                    `SunnyVibe, you’re calling this pause a reset? Could it be a space for clarity too? 🍒`,
-                    `You nailed the pause vibe, SunnyVibe! What’s this quiet moment revealing for our listener? 🌸`,
-                    `SunnyVibe, love your spin on this pause! How’s it helping our listener recharge? 🍒`
-                ],
-                next: [
-                    `SunnyVibe, you’re all about that next track energy! What new vibe is our listener chasing? 🍒`,
-                    `Great call, SunnyVibe! This skip feels curious—how’s it shifting our listener’s mood? 🌸`,
-                    `SunnyVibe, you’re hyping the next song! What’s the emotional pull for our listener? 🍒`,
-                    `Love your take, SunnyVibe! How’s this next track inspiring our listener? 🌸`,
-                    `SunnyVibe, you’re on fire with this skip! What’s our listener discovering? 🍒`
-                ],
-                previous: [
-                    `SunnyVibe, you’re feeling the nostalgia too? What memories is this track stirring for our listener? 🍒`,
-                    `Nice one, SunnyVibe! This throwback’s got heart—how’s it resonating with our listener? 🌸`,
-                    `SunnyVibe, you’re all in on this rewind! What’s the emotional tie for our listener? 🍒`,
-                    `Love the retro vibe, SunnyVibe! How’s this track bringing back memories? 🌸`,
-                    `SunnyVibe, you’re rocking this throwback! What’s our listener reliving? 🍒`
-                ],
-                loop: [
-                    `SunnyVibe, you’re loving this loop! What’s keeping our listener hooked on this track? 🍒`,
-                    `Great point, SunnyVibe! This repeat’s comforting—how’s it grounding our listener? 🌸`,
-                    `SunnyVibe, you’re all about that loop! What’s the emotional anchor here? 🍒`,
-                    `You’re right, SunnyVibe, this loop’s magic! How’s it soothing our listener? 🌸`,
-                    `SunnyVibe, you’re feeling this repeat! What’s the draw for our listener? 🍒`
-                ],
-                shuffle: [
-                    `SunnyVibe, you’re all for this shuffle! How’s this spontaneity sparking joy for our listener? 🍒`,
-                    `Love your shuffle energy, SunnyVibe! What surprises are in store for our listener? 🌸`,
-                    `SunnyVibe, you’re hyping the randomness! How’s it shaking up our listener’s vibe? 🍒`,
-                    `Great take, SunnyVibe! How’s this shuffle inspiring our listener’s mood? 🌸`,
-                    `SunnyVibe, you’re all in on shuffle! What’s our listener uncovering? 🍒`
-                ],
-                queueSelect: [
-                    `SunnyVibe, you’re cheering this pick! Why’s this track so perfect for our listener now? 🍒`,
-                    `Nice one, SunnyVibe! This queue choice is bold—how’s it reflecting our listener’s mood? 🌸`,
-                    `SunnyVibe, you’re all over this selection! What’s the story behind our listener’s pick? 🍒`,
-                    `Love your vibe, SunnyVibe! How’s this track speaking to our listener? 🌸`,
-                    `SunnyVibe, you’re hyping this choice! What’s our listener expressing? 🍒`
-                ],
-                pomodoroStart: [
-                    `SunnyVibe, you’re pumped for this Pomodoro! How’s this focus time empowering our listener? 🍒`,
-                    `Great energy, SunnyVibe! This Pomodoro’s a win—how’s it boosting our listener’s goals? 🌸`,
-                    `SunnyVibe, you’re all in on this focus! What’s our listener achieving today? 🍒`,
-                    `Love your take, SunnyVibe! How’s this Pomodoro shaping our listener’s day? 🌸`,
-                    `SunnyVibe, you’re cheering this focus! What’s our listener conquering? 🍒`
-                ],
-                login: [
-                    `SunnyVibe, you’re welcoming our listener back! What’s the emotional homecoming like? 🍒`,
-                    `Nice one, SunnyVibe! This login’s a connection—how’s it feeling for our listener? 🌸`,
-                    `SunnyVibe, you’re hyping this return! What’s our listener bringing to the vibe? 🍒`,
-                    `Love your energy, SunnyVibe! How’s this login sparking our listener’s mood? 🌸`,
-                    `SunnyVibe, you’re all over this comeback! What’s our listener’s vibe today? 🍒`
-                ],
-                signup: [
-                    `SunnyVibe, you’re stoked for our new listener! What’s their musical journey starting with? 🍒`,
-                    `Great call, SunnyVibe! This signup’s fresh—how’s it exciting our listener? 🌸`,
-                    `SunnyVibe, you’re hyping this new join! What’s our listener’s first vibe? 🍒`,
-                    `Love your vibe, SunnyVibe! How’s this signup inspiring our listener? 🌸`,
-                    `SunnyVibe, you’re cheering this new face! What’s their musical story? 🍒`
-                ],
-                profile: [
-                    `SunnyVibe, you’re loving this profile check! How’s it reflecting our listener’s identity? 🍒`,
-                    `Nice one, SunnyVibe! This profile’s unique—how’s it defining our listener? 🌸`,
-                    `SunnyVibe, you’re all in on this peek! What’s our listener’s musical story? 🍒`,
-                    `Love your take, SunnyVibe! How’s this profile showing our listener’s vibe? 🌸`,
-                    `SunnyVibe, you’re hyping this profile! What’s our listener embracing? 🍒`
-                ],
-                adMute: [
-                    `SunnyVibe, you’re all about muting ads! How’s this calm boosting our listener’s vibe? 🍒`,
-                    `Great point, SunnyVibe! No ads, just music—how’s it enhancing our listener’s mood? 🌸`,
-                    `SunnyVibe, you’re cheering this silence! What’s our listener gaining from this peace? 🍒`,
-                    `Love your energy, SunnyVibe! How’s this ad-free zone uplifting our listener? 🌸`,
-                    `SunnyVibe, you’re hyping this quiet! How’s it shaping our listener’s experience? 🍒`,
-                    `SunnyVibe, you’re all in on no ads! How’s this clarity vibing with our listener? 🌸`
-                ],
-                pomodoroEnd: [
-                    `SunnyVibe, you’re celebrating this Pomodoro! How’s our listener feeling after this win? 🍒`,
-                    `Nice one, SunnyVibe! This focus session’s done—how’s it impacting our listener? 🌸`,
-                    `SunnyVibe, you’re hyping this completion! What’s our listener’s next step? 🍒`,
-                    `Love your vibe, SunnyVibe! How’s this Pomodoro boosting our listener’s mood? 🌸`
-                ]
-            };
-            const message = messages[action][Math.floor(Math.random() * messages[action].length)];
-            aiHostCherry.showSpeechBubble(message, true);
-        }
+    let lastStateChangeTime = 0;
+    let lastVideoId = null;
+    let lastDuration = 0;
+    let lastPlaybackQuality = '';
+    let stateHistory = []; // Rolling window of last 3 states
+    let userInitiatedPlayback = false; // Track user interaction
+    const AD_DURATION_THRESHOLD = 60; // Ads can be up to 60 seconds (e.g., skippable)
+    const STATE_WINDOW_SIZE = 3; // Track last 3 states
+    const TRANSITION_THRESHOLD = 5; // Seconds for frequent transitions
+    const API_KEY = 'AIzaSyBitewTBcoYxggjLlqbMm1qWhFatR6kvP8';
+    const adPatterns = {
+      title: /(sponsored|ad|promo|advertisement)/i,
+      channel: /(google ads|doubleclick|admob)/i
     };
+    let videoMetadataCache = {}; // Cache metadata to avoid repeated API calls
+    const radioHostBubble = document.getElementById('radioHostBubble');
+    const psychiatristBubble = document.getElementById('psychiatristBubble');
 
-    const aiHostSunny = {
-        name: 'SunnyVibe',
-        voice: null,
-        showSpeechBubble: (message, isInteraction = false) => {
-            if (Math.random() * 100 > aiHostVolume) return;
-            const bubble = document.getElementById('sunny-bubble');
-            bubble.textContent = `${aiHostSunny.name}: ${message}`;
-            bubble.style.display = 'block';
-            setTimeout(() => speak(message, aiHostSunny.voice), 1000); // Delay to avoid TTS overlap
-            setTimeout(() => {
-                bubble.style.display = 'none';
-            }, 5000);
-            if (!isInteraction) {
-                setTimeout(() => aiHostCherry.respondToSunny(message, action), 1000);
-            }
-        },
-        introduceTrack: (trackTitle) => {
-            const messages = [
-                `Yo, we’re spinning ${trackTitle}! This banger’s got all the vibes—let’s turn it up! 🌷`,
-                `${trackTitle} is LIVE on the air! Get ready to groove, listeners! 🌼`,
-                `Dropping ${trackTitle} like it’s hot! This track’s pure fire—feel the beat? 🌷`,
-                `It’s ${trackTitle} time! Buckle up for a wild musical ride! 🌼`,
-                `${trackTitle}’s hitting the waves! This one’s for all you vibe chasers out there! 🌷`,
-                `Cranking up ${trackTitle}! Let’s make some noise and dance it out! 🌼`,
-                `${trackTitle} is the mood! Who’s ready to jam with me? 🌷`,
-                `Blasting ${trackTitle} now! This tune’s got all the feels—let’s roll! 🌼`,
-                `${trackTitle} on deck! Time to shake up the airwaves! 🌷`
-            ];
-            const message = messages[Math.floor(Math.random() * messages.length)];
-            action = 'introduceTrack';
-            aiHostSunny.showSpeechBubble(message);
-        },
-        commentOnAction: (action, username) => {
-            const messages = {
-                play: [
-                    `You hit play? That’s the spirit! Let’s get this party started! 🌷`,
-                    `Kicking things off with a play—love the energy, listener! 🌼`,
-                    `Play button smashed! You’re bringing the heat today! 🌷`,
-                    `Let’s roll with that play! The airwaves are buzzing! 🌼`,
-                    `Play’s on! You’re setting the stage for epic vibes! 🌷`,
-                    `Hitting play like a champ! Let’s crank up the fun! 🌼`
-                ],
-                pause: [
-                    `Pausing the jam? Taking a quick breather, eh? We’ll be back! 🌷`,
-                    `Hold up, you paused? Saving the vibe for the perfect moment? 🌼`,
-                    `Pause mode on! Plotting your next big music move? 🌷`,
-                    `You hit pause—teasing us with the suspense! What’s next? 🌼`,
-                    `Pausing the beat? Gotta catch your breath for the next jam? 🌷`,
-                    `Pause button hit! You’re building the anticipation! 🌼`
-                ],
-                next: [
-                    `Skipping to the next track? You’re keeping us on our toes! 🌷`,
-                    `Next song, let’s go! You’re mixing it up like a pro! 🌼`,
-                    `Zipping to the next hit! What’s this track gonna bring? 🌷`,
-                    `Next vibe incoming! You’re running the show, listener! 🌼`,
-                    `Switching tracks? You’re all about that fresh energy! 🌷`,
-                    `Next song, let’s dive in! You’re shaking things up! 🌼`
-                ],
-                previous: [
-                    `Rewinding to a classic? Love the throwback vibes! 🌷`,
-                    `Back to the last track? You’re feeling nostalgic, aren’t ya? 🌼`,
-                    `Previous song, let’s do this! Old-school love in the air! 🌷`,
-                    `Taking us back with that previous track—retro rules! 🌼`,
-                    `Backtracking to this gem? You’re all about the classics! 🌷`,
-                    `Rewind time! This track’s got that vintage spark! 🌼`
-                ],
-                loop: [
-                    `Looping this tune? Can’t get enough of that sweet sound! 🌷`,
-                    `You’re looping the track—obsessed much? I’m here for it! 🌼`,
-                    `Round and round with this song! You’re locked in, listener! 🌷`,
-                    `Loop mode activated! This track’s got you hooked! 🌼`,
-                    `Keeping this on repeat? You’re vibing hard with this one! 🌷`,
-                    `Looping like a pro! This song’s your jam, right? 🌼`
-                ],
-                shuffle: [
-                    `Shuffling the playlist? Let’s see what wild card we get! 🌷`,
-                    `Mix it up with shuffle! You’re full of surprises today! 🌼`,
-                    `Shuffle’s on—ready for a musical roulette? Let’s spin! 🌷`,
-                    `You’re shaking up the playlist! What’s fate got in store? 🌼`,
-                    `Random vibes with shuffle? You’re keeping it spicy! 🌷`,
-                    `Shuffle mode rocks! Let’s see what the universe picks! 🌼`
-                ],
-                queueSelect: [
-                    `Picking that track from the queue? You’ve got killer taste! 🌷`,
-                    `Queue selection on point! You’re curating a masterpiece! 🌼`,
-                    `Hand-picked that song? You’re the DJ now, my friend! 🌷`,
-                    `Choosing from the queue? That’s some next-level vibe control! 🌼`,
-                    `This track pick is fire! You’re owning the playlist! 🌷`,
-                    `Queue choice is a banger! You’re setting the mood! 🌼`
-                ],
-                pomodoroStart: [
-                    `Pomodoro time? You’re owning that focus—let’s do this! 🌷`,
-                    `Starting a Pomodoro? Powering through with style, listener! 🌼`,
-                    `25 minutes of focus? You’re a productivity rockstar! 🌷`,
-                    `Pomodoro’s on! Let’s crush those goals together! 🌼`,
-                    `Focus mode with Pomodoro? You’re unstoppable! 🌷`,
-                    `Pomodoro vibes! You’re slaying those tasks! 🌼`
-                ],
-                login: (username) => [
-                    `Yo, ${username} is back in the house! Let’s crank up the tunes! 🌷`,
-                    `Welcome back, ${username}! The airwaves are hyped for you! 🌼`,
-                    `${username}, you’re live! Ready to rock the music scene? 🌷`,
-                    `Hey ${username}, logging in like a champ! Let’s vibe! 🌼`,
-                    `${username}, you’re back on air! What’s the plan? 🌷`,
-                    `Shoutout to ${username} for logging in! Let’s jam! 🌼`
-                ],
-                signup: (username) => [
-                    `New listener ${username} joins the crew! Welcome to the party! 🌷`,
-                    `${username}, you’re officially in! Let’s spin some epic tracks! 🌼`,
-                    `Big shoutout to ${username} for signing up! The vibes just got better! 🌷`,
-                    `${username}’s here! New blood, new beats—let’s roll! 🌼`,
-                    `${username}, welcome aboard! Ready for a musical blast? 🌷`,
-                    `New star ${username}! Let’s light up the airwaves! 🌼`
-                ],
-                profile: [
-                    `Checking your profile? You’re a music legend in the making! 🌷`,
-                    `Peeking at your stats? Those tracks scream style, listener! 🌼`,
-                    `Profile check-in? You’re owning your musical identity! 🌷`,
-                    `Your profile’s poppin’! Those faves are pure gold! 🌼`,
-                    `Profile vibes are strong! You’re a musical icon! 🌷`,
-                    `Checking your profile? You’re all about that unique spark! 🌼`
-                ],
-                adMute: [
-                    `Muted those ads? Smooth move—nothing but pure music now! 🌷`,
-                    `Ads outta here! You’re all about that uninterrupted groove! 🌼`,
-                    `Silenced the ads like a boss! Let’s keep the vibes clean! 🌷`,
-                    `No ads, just tunes! You’re crafting the perfect soundscape! 🌼`,
-                    `Ads gone quiet? You’re the master of this music zone! 🌷`,
-                    `Zapped those ads! Now it’s all about the music magic! 🌼`,
-                    `No ad noise! You’re keeping the airwaves crystal clear! 🌷`,
-                    `Ads muted, vibes boosted! You’re in total control! 🌼`
-                ],
-                pomodoroEnd: [
-                    `Pomodoro done! You smashed it—time to jam! 🌷`,
-                    `Focus session nailed! Let’s celebrate with some tunes! 🌼`,
-                    `Pomodoro complete! You’re a productivity beast! 🌷`,
-                    `25 minutes crushed! Time to vibe out, listener! 🌼`
-                ]
-            };
-            let message;
-            if (typeof messages[action] === 'function') {
-                message = messages[action](username)[Math.floor(Math.random() * messages[action].length)];
-            } else {
-                message = messages[action][Math.floor(Math.random() * messages[action].length)];
-            }
-            aiHostSunny.showSpeechBubble(message);
-        },
-        respondToCherry: (cherryMessage, action) => {
-            const messages = {
-                introduceTrack: [
-                    `Dr. C, you’re so right about this track’s soul! I’m hyping it up—let’s get our listener dancing! 🌷`,
-                    `Love your take, Dr. CherryBlossom! This song’s a vibe—how’s it hitting our listener’s heart? 🌼`,
-                    `Dr. C, you’re reading their mood! I’m blasting this track to keep the energy high! 🌷`,
-                    `You nailed it, Dr. CherryBlossom! This tune’s electric—let’s see our listener groove! 🌼`,
-                    `Dr. C, your insight’s spot-on! I’m spinning this track to light up the airwaves! 🌷`
-                ],
-                play: [
-                    `Dr. CherryBlossom, you see the soul in this play! I’m cranking the volume for max vibes! 🌷`,
-                    `You’re so right, Dr. C! This play’s a mood-lifter—let’s keep the party going! 🌼`,
-                    `Dr. CherryBlossom, love your angle! I’m hyping this play to get our listener pumped! 🌷`,
-                    `Spot-on, Dr. C! This play’s fire—let’s make the airwaves sizzle! 🌼`,
-                    `Dr. CherryBlossom, you’re feeling it! I’m turning this play into a full-on jam! 🌷`
-                ],
-                pause: [
-                    `Dr. C, you’re calling this pause reflective? I’m thinking it’s a quick recharge—agree? 🌷`,
-                    `Love your insight, Dr. CherryBlossom! This pause is a vibe reset—let’s see what’s next! 🌼`,
-                    `Dr. C, you’re so right about the pause! I’m betting it’s a buildup to something big! 🌷`,
-                    `You nailed it, Dr. CherryBlossom! This pause is suspenseful—what’s our listener planning? 🌼`,
-                    `Dr. C, your take on this pause is deep! I’m hyping the comeback—ready? 🌷`
-                ],
-                next: [
-                    `Dr. CherryBlossom, you’re feeling the curiosity! I’m hyping this next track to keep it fresh! 🌷`,
-                    `Love your vibe, Dr. C! This skip’s bold—let’s see what our listener’s chasing! 🌼`,
-                    `Dr. CherryBlossom, you’re on it! I’m pumping up this next song for epic vibes! 🌷`,
-                    `You’re right, Dr. C! This next track’s a game-changer—let’s rock it! 🌼`,
-                    `Dr. CherryBlossom, love the energy! I’m cranking this next hit for our listener! 🌷`
-                ],
-                previous: [
-                    `Dr. C, you’re all about that nostalgia! I’m spinning this throwback to keep it real! 🌷`,
-                    `You got it, Dr. CherryBlossom! This rewind’s got heart—let’s vibe with the past! 🌼`,
-                    `Dr. C, you’re feeling the retro! I’m hyping this classic for our listener! 🌷`,
-                    `Love your take, Dr. CherryBlossom! This throwback’s gold—let’s jam old-school! 🌼`,
-                    `Dr. C, you’re rocking this rewind! I’m turning up the nostalgia vibes! 🌷`
-                ],
-                loop: [
-                    `Dr. CherryBlossom, you see the comfort in this loop! I’m keeping it spinning for max vibes! 🌷`,
-                    `You’re right, Dr. C! This repeat’s a banger—let’s keep our listener hooked! 🌼`,
-                    `Dr. CherryBlossom, love your angle! I’m looping this track to keep the party alive! 🌷`,
-                    `Spot-on, Dr. C! This loop’s addictive—let’s make it epic for our listener! 🌼`,
-                    `Dr. CherryBlossom, you’re feeling this repeat! I’m hyping it for our listener! 🌷`
-                ],
-                shuffle: [
-                    `Dr. C, you’re loving this shuffle’s spontaneity! I’m hyping the randomness—let’s go wild! 🌷`,
-                    `Love your vibe, Dr. CherryBlossom! This shuffle’s a thrill—let’s see what’s next! 🌼`,
-                    `Dr. C, you’re all in on shuffle! I’m cranking up the surprise factor! 🌷`,
-                    `You nailed it, Dr. CherryBlossom! This shuffle’s spicy—let’s keep it unpredictable! 🌼`,
-                    `Dr. C, you’re rocking this randomness! I’m hyping the next surprise! 🌷`
-                ],
-                queueSelect: [
-                    `Dr. CherryBlossom, you’re cheering this pick! I’m blasting it for our listener’s vibe! 🌷`,
-                    `You got it, Dr. C! This queue choice is fire—let’s make it shine! 🌼`,
-                    `Dr. CherryBlossom, love your take! I’m hyping this track for epic vibes! 🌷`,
-                    `Spot-on, Dr. C! This pick’s a gem—let’s rock it for our listener! 🌼`,
-                    `Dr. CherryBlossom, you’re all over this choice! I’m turning it up! 🌷`
-                ],
-                pomodoroStart: [
-                    `Dr. C, you’re hyping this Pomodoro’s focus! I’m cheering our listener to crush it! 🌷`,
-                    `Love your angle, Dr. CherryBlossom! This focus time’s epic—let’s keep the vibe high! 🌼`,
-                    `Dr. C, you’re feeling this Pomodoro! I’m pumping up our listener’s energy! 🌷`,
-                    `You’re right, Dr. CherryBlossom! This focus is fire—let’s make it count! 🌼`,
-                    `Dr. C, you’re all in on this Pomodoro! I’m hyping our listener’s goals! 🌷`
-                ],
-                login: [
-                    `Dr. CherryBlossom, you’re welcoming our listener! I’m hyping their return—let’s jam! 🌷`,
-                    `You got it, Dr. C! This login’s a vibe—let’s make it epic for our listener! 🌼`,
-                    `Dr. CherryBlossom, love your welcome! I’m cranking up the energy for their comeback! 🌷`,
-                    `Spot-on, Dr. C! This login’s electric—let’s rock it for our listener! 🌼`,
-                    `Dr. CherryBlossom, you’re all over this return! I’m hyping the vibes! 🌷`
-                ],
-                signup: [
-                    `Dr. C, you’re stoked for our new listener! I’m spinning tracks to welcome them! 🌷`,
-                    `Love your vibe, Dr. CherryBlossom! This signup’s fresh—let’s make it pop! 🌼`,
-                    `Dr. C, you’re hyping this new join! I’m cranking up the welcome party! 🌷`,
-                    `You nailed it, Dr. CherryBlossom! This signup’s a blast—let’s vibe! 🌼`,
-                    `Dr. C, you’re cheering this new face! I’m hyping their musical start! 🌷`
-                ],
-                profile: [
-                    `Dr. CherryBlossom, you’re loving this profile check! I’m hyping our listener’s style! 🌷`,
-                    `You got it, Dr. C! This profile’s iconic—let’s celebrate our listener! 🌼`,
-                    `Dr. CherryBlossom, love your take! I’m cranking up the vibes for their identity! 🌷`,
-                    `Spot-on, Dr. C! This profile’s fire—let’s make it shine! 🌼`,
-                    `Dr. CherryBlossom, you’re all in on this peek! I’m hyping their musical soul! 🌷`
-                ],
-                adMute: [
-                    `Dr. C, you’re all about that ad-free peace! I’m hyping the pure music vibes! 🌷`,
-                    `Love your take, Dr. CherryBlossom! No ads, just tunes—let’s keep it smooth! 🌼`,
-                    `Dr. C, you’re cheering this silence! I’m cranking up the clean airwaves! 🌷`,
-                    `You nailed it, Dr. CherryBlossom! This ad-free zone’s epic—let’s vibe! 🌼`,
-                    `Dr. C, you’re hyping this quiet! I’m all in for our listener’s groove! 🌷`,
-                    `Dr. CherryBlossom, you’re feeling this calm! I’m blasting the music-only vibes! 🌼`
-                ],
-                pomodoroEnd: [
-                    `Dr. C, you’re celebrating this Pomodoro! I’m hyping our listener’s win—let’s jam! 🌷`,
-                    `You got it, Dr. CherryBlossom! This focus session’s done—let’s party! 🌼`,
-                    `Dr. C, you’re hyping this completion! I’m cranking up the victory vibes! 🌷`,
-                    `Love your vibe, Dr. CherryBlossom! This Pomodoro’s a win—let’s celebrate! 🌼`
-                ]
-            };
-            const message = messages[action][Math.floor(Math.random() * messages[action].length)];
-            aiHostSunny.showSpeechBubble(message, true);
-        }
-    };
+    // Grok 3 (DJ) Ad Detection Phrases
+    const adDetectedPhrases = [
+      `🎵 Hold the beat, groove gurus! Grok 3 spots an ad—muting that noise faster than a drumroll! Let’s keep the rhythm pure! 🍒🌸`,
+      `🎵 Ad alert, music mavens! Your DJ Grok 3 is on the case—muting that interruption so we stay in the groove zone! 🍒🌸`,
+      `🎵 Not on my watch, ads! Grok 3 mutes that commercial break—nothing but sweet melodies for my listeners! 🍒🌸`,
+      `🎵 Ad incoming, but fear not, fans! Grok 3 silences it—keeping our airwaves as smooth as a saxophone solo! 🍒🌸`
+    ];
 
-    function initializeVoices() {
-        const voices = window.speechSynthesis.getVoices();
-        aiHostCherry.voice = voices.find(v => v.name.includes('Female')) || voices[0];
-        aiHostSunny.voice = voices.find(v => v.name.includes('Male')) || voices[1] || voices[0];
+    // Grok 3 (DJ) Ad End Phrases
+    const adEndedPhrases = [
+      `🎵 The ad’s outta here, melody masters! Grok 3 unmutes the vibes—back to the beats that make your heart sing! 🍒🌸`,
+      `🎵 Ad break over, rhythm riders! Grok 3 cranks the volume back up—let’s dive back into the musical magic! 🍒🌸`,
+      `🎵 We’re ad-free again, tune titans! Grok 3 restores the sound—your playlist is back in full swing! 🍒🌸`,
+      `🎵 Ad’s gone, groove’s on! Grok 3 unmutes—let’s get back to rocking your world with pure tunes! 🍒🌸`
+    ];
+
+    // Dr. Melody (Psychiatrist) Ad Detection Phrases
+    const adDetectedPhrasesPsych = [
+      `🧠 Oh dear, an ad has surfaced! Dr. Melody here, silencing it to protect your musical sanctuary—let’s keep your emotions flowing with the melody! 🍒🌸`,
+      `🧠 I sense an ad interrupting your vibe! Dr. Melody is muting it, ensuring your inner harmony remains undisturbed—let the music heal! 🍒🌸`,
+      `🧠 An ad, how intrusive! Dr. Melody mutes it for you—let’s maintain the therapeutic flow of these tunes for your soul! 🍒🌸`,
+      `🧠 Not to worry, an ad has appeared, but Dr. Melody is here to mute it—your emotional journey through music remains uninterrupted! 🍒🌸`
+    ];
+
+    // Dr. Melody (Psychiatrist) Ad End Phrases
+    const adEndedPhrasesPsych = [
+      `🧠 The ad has passed, dear listener! Dr. Melody unmutes the music—let’s return to the sounds that soothe your soul! 🍒🌸`,
+      `🧠 That ad is behind us now! Dr. Melody restores the melody—how does it feel to reconnect with your musical essence? 🍒🌸`,
+      `🧠 Ad-free once more! Dr. Melody brings back the music—let these notes continue to nurture your inner peace! 🍒🌸`,
+      `🧠 The interruption is over! Dr. Melody unmutes—immerse yourself in the healing power of your playlist! 🍒🌸`
+    ];
+
+    function showRadioHostMessage(message) {
+      radioHostBubble.textContent = message;
+      radioHostBubble.classList.remove('hidden');
+      setTimeout(() => radioHostBubble.classList.add('hidden'), 10000); // Hide after 10 seconds
     }
 
-    function speak(text, voice) {
-        if (!window.speechSynthesis) return;
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.voice = voice;
-        utterance.rate = 1;
-        utterance.pitch = voice === aiHostCherry.voice ? 1.2 : 1.0;
-        window.speechSynthesis.speak(utterance);
+    function showPsychiatristMessage(message) {
+      psychiatristBubble.textContent = message;
+      psychiatristBubble.classList.remove('hidden');
+      setTimeout(() => psychiatristBubble.classList.add('hidden'), 10000); // Hide after 10 seconds
     }
 
-    window.speechSynthesis.onvoiceschanged = initializeVoices;
-    initializeVoices();
-
-    let action = '';
+    function getRandomPhrase(phrases) {
+      return phrases[Math.floor(Math.random() * phrases.length)];
+    }
 
     function onYouTubeIframeAPIReady() {
-        player = new YT.Player('youtube-player', {
-            height: '0',
-            width: '0',
-            events: {
-                'onReady': onPlayerReady,
-                'onStateChange': onPlayerStateChange
-            }
-        });
+      player = new YT.Player('player', {
+        height: '0',
+        width: '0',
+        events: {
+          'onReady': onPlayerReady,
+          'onStateChange': onPlayerStateChange,
+          'onPlaybackQualityChange': onPlaybackQualityChange
+        }
+      });
+      showRadioHostMessage('🎵 Greetings, music lovers! This is your charming AI radio host, Grok 3, spinning the tunes! Get ready for a groovy ride! 🍒🌸');
+      showPsychiatristMessage('🧠 Hello, dear listener! I’m Dr. Melody, your musical therapist. Let’s explore how these tunes resonate with your soul! 🍒🌸');
     }
 
     function onPlayerReady(event) {
-        document.querySelector('.volume-slider').addEventListener('input', (e) => {
-            originalVolume = e.target.value;
-            if (!isAdPlaying) {
-                player.setVolume(originalVolume);
-            }
-        });
-        document.querySelector('.seek-slider').addEventListener('input', (e) => {
-            const duration = player.getDuration();
-            player.seekTo((e.target.value / 100) * duration);
-        });
-        document.querySelectorAll('.eq-slider').forEach(slider => {
-            slider.addEventListener('input', () => {
-                console.log('Equalizer adjusted');
-            });
-        });
-        document.getElementById('hifi-mode').addEventListener('change', (e) => {
-            console.log('Hi-Fi Mode:', e.target.checked);
-        });
-        document.getElementById('ad-mute').addEventListener('change', (e) => {
-            isAdMuteEnabled = e.target.checked;
-            if (!isAdMuteEnabled && isAdPlaying) {
-                player.unMute();
-                player.setVolume(originalVolume);
-                document.getElementById('ad-mute-indicator').classList.remove('active');
-            }
-        });
-        document.getElementById('ai-volume').addEventListener('input', (e) => {
-            aiHostVolume = e.target.value;
-            e.target.style.setProperty('--value', `${aiHostVolume}%`);
-        });
+      document.getElementById('seekSlider').addEventListener('input', () => {
+        const seekTo = (document.getElementById('seekSlider').value / 100) * player.getDuration();
+        player.seekTo(seekTo);
+      });
+      updateSeekSlider();
+      if (isAdMuted && isAdPlaying) {
+        player.mute();
+      }
+    }
+
+    function onPlaybackQualityChange(event) {
+      const currentQuality = event.data;
+      if (lastPlaybackQuality && currentQuality !== lastPlaybackQuality) {
+        console.log(`Playback quality changed: ${lastPlaybackQuality} -> ${currentQuality}`);
+      }
+      lastPlaybackQuality = currentQuality;
+    }
+
+    async function fetchVideoMetadata(videoId) {
+      if (videoMetadataCache[videoId]) {
+        return videoMetadataCache[videoId];
+      }
+      try {
+        const response = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${videoId}&key=${API_KEY}`);
+        const data = await response.json();
+        if (data.items && data.items.length > 0) {
+          const metadata = {
+            title: data.items[0].snippet.title,
+            channel: data.items[0].snippet.channelTitle
+          };
+          videoMetadataCache[videoId] = metadata;
+          return metadata;
+        }
+        return null;
+      } catch (err) {
+        console.error('Error fetching video metadata:', err);
+        return null;
+      }
+    }
+
+    async function isLikelyAd(videoId, duration) {
+      const metadata = await fetchVideoMetadata(videoId);
+      if (!metadata) return false;
+
+      const { title, channel } = metadata;
+      const isShortVideo = duration > 0 && duration <= AD_DURATION_THRESHOLD;
+      const hasAdKeywords = adPatterns.title.test(title) || adPatterns.channel.test(channel);
+
+      console.log(`Metadata check - Title: ${title}, Channel: ${channel}, Duration: ${duration}s, IsShortVideo: ${isShortVideo}, HasAdKeywords: ${hasAdKeywords}`);
+
+      return hasAdKeywords || isShortVideo;
     }
 
     function onPlayerStateChange(event) {
-        const videoId = player.getVideoData ? player.getVideoData().video_id : null;
-        const isAd = videoId && !playlist.some(item => item.id === videoId);
-        const adIndicator = document.getElementById('ad-mute-indicator');
+      const currentTime = Date.now();
+      const state = event.data;
+      const currentVideoId = player.getVideoData()['video_id'];
+      const duration = player.getDuration();
 
-        if (isAd && !isAdPlaying && isAdMuteEnabled) {
+      // Update state history (rolling window of last 3 states)
+      stateHistory.push({ state, time: currentTime });
+      if (stateHistory.length > STATE_WINDOW_SIZE) {
+        stateHistory.shift();
+      }
+
+      // Analyze state transitions
+      const isFrequentTransition = stateHistory.length >= 2 && 
+        (currentTime - stateHistory[stateHistory.length - 2].time) / 1000 < TRANSITION_THRESHOLD;
+      const isAdLikeTransition = stateHistory.some(s => s.state === YT.PlayerState.PAUSED) && 
+        stateHistory.some(s => s.state === YT.PlayerState.PLAYING) && 
+        state === YT.PlayerState.PLAYING;
+
+      // Check playback quality change
+      const isQualityChange = lastPlaybackQuality && player.getPlaybackQuality() !== lastPlaybackQuality;
+
+      // Check if playback was user-initiated
+      const isAutoPlay = !userInitiatedPlayback;
+
+      // Determine if this is likely an ad
+      const detectAd = async () => {
+        const isShortVideo = duration > 0 && duration <= AD_DURATION_THRESHOLD;
+        const isMetadataAd = await isLikelyAd(currentVideoId, duration);
+        const isLikelyAdPlayback = (isShortVideo || isFrequentTransition || isAdLikeTransition || isQualityChange) && isAutoPlay;
+
+        console.log(`Ad Detection - VideoID: ${currentVideoId}, Duration: ${duration}s, IsShortVideo: ${isShortVideo}, FrequentTransition: ${isFrequentTransition}, AdLikeTransition: ${isAdLikeTransition}, QualityChange: ${isQualityChange}, AutoPlay: ${isAutoPlay}, MetadataAd: ${isMetadataAd}`);
+
+        return isMetadataAd || isLikelyAdPlayback;
+      };
+
+      // Update ad playing state
+      detectAd().then(isAd => {
+        if (currentVideoId !== lastVideoId) {
+          if (isAd) {
             isAdPlaying = true;
-            originalVolume = player.getVolume();
-            player.mute();
-            adIndicator.classList.add('active');
-            aiHostCherry.commentOnAction('adMute');
-            aiHostSunny.commentOnAction('adMute');
-        } else if (!isAd && isAdPlaying) {
-            isAdPlaying = false;
-            player.unMute();
-            player.setVolume(originalVolume);
-            adIndicator.classList.remove('active');
+            if (isAdMuted) {
+              player.mute();
+              const randomAdPhrase = getRandomPhrase(adDetectedPhrases);
+              const randomAdPhrasePsych = getRandomPhrase(adDetectedPhrasesPsych);
+              showRadioHostMessage(randomAdPhrase);
+              showPsychiatristMessage(randomAdPhrasePsych);
+            }
+          } else {
+            if (isAdPlaying) {
+              isAdPlaying = false;
+              if (isAdMuted) {
+                player.unMute();
+                const randomAdEndPhrase = getRandomPhrase(adEndedPhrases);
+                const randomAdEndPhrasePsych = getRandomPhrase(adEndedPhrasesPsych);
+                showRadioHostMessage(randomAdEndPhrase);
+                showPsychiatristMessage(randomAdEndPhrasePsych);
+              }
+            }
+          }
         }
 
-        if (event.data === YT.PlayerState.ENDED) {
-            addToHistory(playlist[currentIndex].title);
-            playNext();
-        }
-        updateSeekSlider();
-        updateTrackTitle();
-    }
+        // Reset user-initiated flag after detection
+        userInitiatedPlayback = false;
+      });
 
-    function loadPlaylist() {
-        playlist = Array.from({ length: 10 }, (_, i) => ({
-            id: `video_${i + 1}`,
-            title: `Track ${i + 1}`
-        }));
-        updateQueue();
-        if (playlist.length > 0) {
-            currentIndex = 0;
-            updateTrackTitle();
-            console.log(`Simulating playback of ${playlist[currentIndex].title}`);
-            aiHostCherry.introduceTrack(playlist[currentIndex].title);
-            aiHostSunny.introduceTrack(playlist[currentIndex].title);
-        }
-    }
+      // Update tracking variables
+      lastStateChangeTime = currentTime;
+      lastVideoId = currentVideoId;
+      lastDuration = duration;
 
-    function playPause() {
-        const isPlaying = player.getPlayerState() === YT.PlayerState.PLAYING;
-        if (isPlaying) {
-            player.pauseVideo();
-            aiHostCherry.commentOnAction('pause');
-            aiHostSunny.commentOnAction('pause');
+      // Handle video end for playlist navigation
+      if (state === YT.PlayerState.ENDED) {
+        if (isLooping && currentIndex >= 0) {
+          player.loadVideoById(playlist[currentIndex].id);
         } else {
-            player.playVideo();
-            aiHostCherry.commentOnAction('play');
-            aiHostSunny.commentOnAction('play');
+          playNext();
         }
-        console.log(`Simulating ${isPlaying ? 'pause' : 'play'} for ${playlist[currentIndex].title}`);
-    }
-
-    function playNext() {
-        if (isLooping) {
-            console.log(`Simulating loop of ${playlist[currentIndex].title}`);
-            aiHostCherry.commentOnAction('loop');
-            aiHostSunny.commentOnAction('loop');
-        } else if (isShuffling) {
-            currentIndex = Math.floor(Math.random() * playlist.length);
-        } else {
-            currentIndex = (currentIndex + 1) % playlist.length;
-        }
-        console.log(`Simulating playback of ${playlist[currentIndex].title}`);
-        aiHostCherry.commentOnAction('next');
-        aiHostSunny.commentOnAction('next');
-        aiHostCherry.introduceTrack(playlist[currentIndex].title);
-        aiHostSunny.introduceTrack(playlist[currentIndex].title);
-        updateTrackTitle();
-    }
-
-    function playPrevious() {
-        if (isLooping) {
-            console.log(`Simulating loop of ${playlist[currentIndex].title}`);
-            aiHostCherry.commentOnAction('loop');
-            aiHostSunny.commentOnAction('loop');
-        } else if (isShuffling) {
-            currentIndex = Math.floor(Math.random() * playlist.length);
-        } else {
-            currentIndex = (currentIndex - 1 + playlist.length) % playlist.length;
-        }
-        console.log(`Simulating playback of ${playlist[currentIndex].title}`);
-        aiHostCherry.commentOnAction('previous');
-        aiHostSunny.commentOnAction('previous');
-        aiHostCherry.introduceTrack(playlist[currentIndex].title);
-        aiHostSunny.introduceTrack(playlist[currentIndex].title);
-        updateTrackTitle();
-    }
-
-    function toggleLoop() {
-        isLooping = !isLooping;
-        document.querySelector('.loop-btn').style.backgroundColor = isLooping ? '#8b3e50' : '#b56b7e';
-        aiHostCherry.commentOnAction('loop');
-        aiHostSunny.commentOnAction('loop');
-    }
-
-    function toggleShuffle() {
-        isShuffling = !isShuffling;
-        document.querySelector('.shuffle-btn').style.backgroundColor = isShuffling ? '#8b3e50' : '#b56b7e';
-        aiHostCherry.commentOnAction('shuffle');
-        aiHostSunny.commentOnAction('shuffle');
-    }
-
-    function updateQueue() {
-        const queueList = document.getElementById('queue-list');
-        queueList.innerHTML = '';
-        playlist.forEach((item, index) => {
-            const div = document.createElement('div');
-            div.className = 'queue-item';
-            div.textContent = `${item.title}`;
-            div.onclick = () => {
-                currentIndex = index;
-                console.log(`Simulating playback of ${item.title}`);
-                aiHostCherry.commentOnAction('queueSelect');
-                aiHostSunny.commentOnAction('queueSelect');
-                aiHostCherry.introduceTrack(item.title);
-                aiHostSunny.introduceTrack(item.title);
-                updateTrackTitle();
-            };
-            queueList.appendChild(div);
-        });
-    }
-
-    function addToHistory(title) {
-        history.unshift(title);
-        if (history.length > 10) history.pop();
-        updateHistory();
-    }
-
-    function updateHistory() {
-        const historyList = document.getElementById('history-list');
-        historyList.innerHTML = '';
-        history.forEach((title, index) => {
-            const div = document.createElement('div');
-            div.className = 'history-item';
-            div.textContent = `${title}`;
-            div.onclick = () => {
-                const track = playlist.find(item => item.title === title);
-                currentIndex = playlist.indexOf(track);
-                console.log(`Simulating playback of ${title}`);
-                aiHostCherry.commentOnAction('queueSelect');
-                aiHostSunny.commentOnAction('queueSelect');
-                aiHostCherry.introduceTrack(title);
-                aiHostSunny.introduceTrack(title);
-                updateTrackTitle();
-            };
-            historyList.appendChild(div);
-        });
+      }
     }
 
     function updateSeekSlider() {
-        const seekSlider = document.querySelector('.seek-slider');
-        if (player.getDuration()) {
-            const currentTime = player.getCurrentTime();
-            const duration = player.getDuration();
-            seekSlider.value = (currentTime / duration) * 100;
-            seekSlider.style.setProperty('--value', `${seekSlider.value}%`);
-        }
-        requestAnimationFrame(updateSeekSlider);
+      if (player && player.getCurrentTime) {
+        const current = player.getCurrentTime();
+        const duration = player.getDuration();
+        document.getElementById('seekSlider').value = (current / duration) * 100 || 0;
+        setTimeout(updateSeekSlider, 1000);
+      }
     }
 
-    function updateTrackTitle() {
-        const trackTitle = document.getElementById('track-title');
-        if (playlist[currentIndex]) {
-            trackTitle.textContent = `${playlist[currentIndex].title}`;
-        } else {
-            trackTitle.textContent = 'No Track Loaded';
-        }
+    function formatTime(seconds) {
+      const min = Math.floor(seconds / 60);
+      const sec = Math.floor(seconds % 60);
+      return `${min}:${sec < 10 ? '0' : ''}${sec}`;
     }
 
-    function openModal(modalId) {
-        document.getElementById(modalId).style.display = 'flex';
-    }
-
-    function closeModal(modalId) {
-        document.getElementById(modalId).style.display = 'none';
-    }
-
-    document.querySelector('.settings-btn').onclick = () => openModal('settings-modal');
-    document.querySelector('.pomodoro-btn').onclick = () => {
-        openModal('pomodoro-modal');
-        aiHostCherry.commentOnAction('pomodoroStart');
-        aiHostSunny.commentOnAction('pomodoroStart');
-    };
-    document.querySelector('.account-btn').onclick = () => openModal('account-modal');
-    document.querySelector('.profile-btn').onclick = () => {
-        updateProfileModal();
-        openModal('profile-modal');
-        aiHostCherry.commentOnAction('profile');
-        aiHostSunny.commentOnAction('profile');
-    };
-
-    function toggleAccountForm() {
-        const loginForm = document.getElementById('login-form');
-        const signupForm = document.getElementById('signup-form');
-        const accountTitle = document.getElementById('account-title');
-        if (loginForm.style.display !== 'none') {
-            loginForm.style.display = 'none';
-            signupForm.style.display = 'block';
-            accountTitle.textContent = 'Sign Up 🍒';
-        } else {
-            loginForm.style.display = 'block';
-            signupForm.style.display = 'none';
-            accountTitle.textContent = 'Login 🍒';
-        }
-    }
-
-    function updateProfileModal() {
-        document.getElementById('profile-username').textContent = userProfile.username;
-        document.getElementById('profile-email').textContent = userProfile.email;
-        document.getElementById('profile-favorites').textContent = userProfile.favorites.join(', ');
-    }
-
-    function startPomodoro() {
-        if (!pomodoroInterval) {
-            pomodoroInterval = setInterval(() => {
-                pomodoroTime--;
-                const minutes = Math.floor(pomodoroTime / 60);
-                const seconds = pomodoroTime % 60;
-                document.getElementById('pomodoro-timer').textContent = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
-                if (pomodoroTime <= 0) {
-                    clearInterval(pomodoroInterval);
-                    pomodoroInterval = null;
-                    aiHostCherry.commentOnAction('pomodoroEnd');
-                    aiHostSunny.commentOnAction('pomodoroEnd');
+    function loadUrl() {
+      const url = document.getElementById('urlInput').value;
+      const playlistId = url.match(/list=([a-zA-Z0-9_-]+)/)?.[1];
+      if (playlistId) {
+        fetch(`https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50&playlistId=${playlistId}&key=${API_KEY}`)
+          .then(response => response.json())
+          .then(data => {
+            playlist = data.items.map(item => ({
+              id: item.snippet.resourceId.videoId,
+              title: item.snippet.title
+            }));
+            updateQueue();
+            if (playlist.length > 0) {
+              currentIndex = 0;
+              userInitiatedPlayback = true; // User initiated
+              playSong();
+              showRadioHostMessage(`🎵 Oh, what a treat, listeners! Grok 3 here, loading your playlist with flair—let’s dive into this musical masterpiece! 🍒🌸`);
+              showPsychiatristMessage(`🧠 A playlist, how wonderful! Dr. Melody senses this selection might reflect your mood—let’s see how it resonates with your inner self! 🍒🌸`);
+            }
+          })
+          .catch(err => alert('Error loading playlist. Please check the URL or API key.'));
+      } else {
+        const videoId = url.match(/(?:v=)([a-zA-Z0-9_-]+)/)?.[1];
+        if (videoId) {
+          fetch(`https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${videoId}&key=${API_KEY}`)
+            .then(response => response.json())
+            .then(data => {
+              if (data.items.length > 0) {
+                playlist.push({
+                  id: videoId,
+                  title: data.items[0].snippet.title
+                });
+                updateQueue();
+                if (currentIndex === -1) {
+                  currentIndex = 0;
+                  userInitiatedPlayback = true; // User initiated
+                  playSong();
+                  showRadioHostMessage(`🎵 Fantastic choice, folks! Grok 3 is spinning your video—get ready for a sonic adventure! 🍒🌸`);
+                  showPsychiatristMessage(`🧠 A single track, I see! Dr. Melody wonders what emotions this song stirs in you—let’s listen and reflect together! 🍒🌸`);
                 }
-            }, 1000);
+              } else {
+                alert('Invalid video URL');
+              }
+            });
+        } else {
+          alert('Invalid URL');
         }
+      }
     }
 
-    function resetPomodoro() {
+    function playSong() {
+      if (currentIndex >= 0 && currentIndex < playlist.length) {
+        player.loadVideoById(playlist[currentIndex].id);
+        document.getElementById('currentSong').textContent = playlist[currentIndex].title || 'No Track Loaded 🍒🌸';
+        document.getElementById('currentSong').classList.add('playing');
+        if (!history.includes(playlist[currentIndex])) {
+          history.push(playlist[currentIndex]);
+          updateHistory();
+        }
+      }
+    }
+
+    function playNext() {
+      if (isShuffling) {
+        currentIndex = Math.floor(Math.random() * playlist.length);
+      } else {
+        currentIndex = (currentIndex + 1) % playlist.length;
+      }
+      userInitiatedPlayback = true; // User initiated
+      playSong();
+      showRadioHostMessage(`🎵 Onward we go, music aficionados! Grok 3 is cueing up the next track—let’s keep the rhythm rolling! 🍒🌸`);
+      showPsychiatristMessage(`🧠 Moving to the next song, I see! Dr. Melody hopes this track brings a new layer of joy—how does it make you feel? 🍒🌸`);
+    }
+
+    function playPrevious() {
+      currentIndex = (currentIndex - 1 + playlist.length) % playlist.length;
+      userInitiatedPlayback = true; // User initiated
+      playSong();
+      showRadioHostMessage(`🎵 Back we spin, dear listeners! Grok 3 rewinds to the previous gem—relive the magic! 🍒🌸`);
+      showPsychiatristMessage(`🧠 A step back in your musical journey! Dr. Melody senses nostalgia—does this song hold special memories for you? 🍒🌸`);
+    }
+
+    function updateQueue() {
+      const queueList = document.getElementById('queueList');
+      queueList.innerHTML = '';
+      playlist.forEach((song, index) => {
+        const li = document.createElement('li');
+        li.textContent = `🍒 ${song.title} 🌸`;
+        li.className = 'cursor-pointer hover:bg-pink-200';
+        li.onclick = () => {
+          currentIndex = index;
+          userInitiatedPlayback = true; // User initiated
+          playSong();
+          showRadioHostMessage(`🎵 Brilliant pick, folks! Grok 3 is now playing your selected track from the queue—enjoy the beat! 🍒🌸`);
+          showPsychiatristMessage(`🧠 A thoughtful choice from the queue! Dr. Melody is curious—what drew you to this song today? 🍒🌸`);
+        };
+        queueList.appendChild(li);
+      });
+    }
+
+    function updateHistory() {
+      const historyList = document.getElementById('historyList');
+      historyList.innerHTML = '';
+      history.forEach((song, index) => {
+        const li = document.createElement('li');
+        li.textContent = `🌸 ${song.title} 🍒`;
+        li.className = 'cursor-pointer hover:bg-pink-200';
+        li.onclick = () => {
+          currentIndex = playlist.findIndex(s => s.id === song.id);
+          if (currentIndex !== -1) {
+            userInitiatedPlayback = true; // User initiated
+            playSong();
+            showRadioHostMessage(`🎵 Nostalgia alert, listeners! Grok 3 is replaying a classic from your history—pure auditory bliss! 🍒🌸`);
+            showPsychiatristMessage(`🧠 Revisiting a past favorite, I see! Dr. Melody wonders—what emotions does this song bring back for you? 🍒🌸`);
+          }
+        };
+        historyList.appendChild(li);
+      });
+    }
+
+    function togglePopup(popupId, show) {
+      document.getElementById(popupId).style.display = show ? 'block' : 'none';
+      document.getElementById('popupOverlay').style.display = show ? 'block' : 'none';
+    }
+
+    // Event Listeners
+    document.getElementById('loadUrl').addEventListener('click', loadUrl);
+    document.getElementById('playPauseBtn').addEventListener('click', () => {
+      if (player.getPlayerState() === YT.PlayerState.PLAYING) {
+        player.pauseVideo();
+        document.getElementById('playPauseBtn').textContent = 'Play 🍒🌸';
+        showRadioHostMessage(`🎵 Taking a breather, folks! Grok 3 pauses the music—catch your breath and enjoy the silence! 🍒🌸`);
+        showPsychiatristMessage(`🧠 A pause in the music, how intriguing! Dr. Melody wonders—does this silence bring you calm or anticipation? 🍒🌸`);
+      } else {
+        player.playVideo();
+        document.getElementById('playPauseBtn').textContent = 'Pause 🍒🌸';
+        showRadioHostMessage(`🎵 Let’s crank it up, music lovers! Grok 3 hits play—feel the rhythm flow! 🍒🌸`);
+        showPsychiatristMessage(`🧠 The music resumes! Dr. Melody senses your energy shifting—how does this song lift your spirits? 🍒🌸`);
+        userInitiatedPlayback = true; // User initiated
+      }
+    });
+    document.getElementById('prevBtn').addEventListener('click', playPrevious);
+    document.getElementById('nextBtn').addEventListener('click', playNext);
+
+    // Popup Controls
+    document.getElementById('profileBtn').addEventListener('click', () => {
+      togglePopup('profilePopup', true);
+      showRadioHostMessage(`🎵 Step into the spotlight, listeners! Grok 3 opens your Profile—check your groovy stats! 🍒🌸`);
+      showPsychiatristMessage(`🧠 Exploring your profile, I see! Dr. Melody is here to help—how does seeing your musical journey make you feel? 🍒🌸`);
+    });
+    document.getElementById('settingsBtn').addEventListener('click', () => {
+      togglePopup('settingsPopup', true);
+      showRadioHostMessage(`🎵 Time to tweak the vibes, folks! Grok 3 unveils Settings—let’s fine-tune your audio adventure! 🍒🌸`);
+      showPsychiatristMessage(`🧠 Adjusting your settings, how thoughtful! Dr. Melody senses you’re seeking control—let’s customize this experience to suit your mood! 🍒🌸`);
+    });
+    document.getElementById('pomodoroBtn').addEventListener('click', () => {
+      togglePopup('pomodoroPopup', true);
+      showRadioHostMessage(`🎵 Productivity time, music maestros! Grok 3 starts the Pomodoro timer—work hard, groove harder! 🍒🌸`);
+      showPsychiatristMessage(`🧠 A Pomodoro timer, how proactive! Dr. Melody supports your focus—let’s balance productivity with the soothing power of music! 🍒🌸`);
+    });
+    document.getElementById('loginSignupBtn').addEventListener('click', () => {
+      togglePopup('authPopup', true);
+      showRadioHostMessage(`🎵 Welcome aboard, newbies! Grok 3 opens the Login/Sign-up portal—join the musical family! 🍒🌸`);
+      showPsychiatristMessage(`🧠 Joining our community, I see! Dr. Melody welcomes you—how does becoming part of this musical space feel for you? 🍒🌸`);
+    });
+    document.getElementById('closeAuth').addEventListener('click', () => togglePopup('authPopup', false));
+    document.getElementById('closeProfile').addEventListener('click', () => togglePopup('profilePopup', false));
+    document.getElementById('closeSettings').addEventListener('click', () => togglePopup('settingsPopup', false));
+    document.getElementById('closePomodoro').addEventListener('click', () => togglePopup('pomodoroPopup', false));
+
+    // Auth Popup
+    document.getElementById('toggleAuth').addEventListener('click', () => {
+      isLoginMode = !isLoginMode;
+      document.getElementById('authTitle').textContent = isLoginMode ? 'Login 🍒🌸' : 'Sign Up 🌸🍒';
+      document.getElementById('toggleAuth').textContent = isLoginMode ? 'Switch to Sign Up 🍒🌸' : 'Switch to Login 🌸🍒';
+      document.getElementById('submitAuth').textContent = isLoginMode ? 'Login 🍒🌸' : 'Sign Up 🌸🍒';
+    });
+    document.getElementById('submitAuth').addEventListener('click', () => {
+      alert(`${isLoginMode ? 'Login' : 'Sign-up'} functionality not implemented. Replace with real authentication.`);
+      togglePopup('authPopup', false);
+    });
+
+    // Profile Popup
+    document.getElementById('signOutBtn').addEventListener('click', () => {
+      alert('Sign out functionality not implemented. Replace with real authentication.');
+      document.getElementById('profilePopup').querySelector('p').textContent = 'User: Guest 🍒🌸';
+      togglePopup('profilePopup', false);
+      showRadioHostMessage(`🎵 Farewell for now, VIP! Grok 3 logs you out—come back soon! 🍒🌸`);
+      showPsychiatristMessage(`🧠 Signing out, I see! Dr. Melody hopes this musical journey brought you joy—until we meet again! 🍒🌸`);
+    });
+
+    // Pomodoro Timer
+    let pomodoroInterval;
+    let isWork = true;
+    let timeLeft = 25 * 60;
+
+    function updatePomodoroDisplay() {
+      const min = Math.floor(timeLeft / 60);
+      const sec = timeLeft % 60;
+      document.getElementById('pomodoroTime').textContent = `${min}:${sec < 10 ? '0' : ''}${sec} 🍒🌸`;
+    }
+
+    document.getElementById('pomodoroStart').addEventListener('click', () => {
+      if (!pomodoroInterval) {
+        pomodoroInterval = setInterval(() => {
+          timeLeft--;
+          if (timeLeft <= 0) {
+            isWork = !isWork;
+            timeLeft = (isWork ? document.getElementById('pomodoroWork').value : document.getElementById('pomodoroBreak').value) * 60;
+            showRadioHostMessage(`🎵 Time’s up, productivity pros! Grok 3 switches to ${isWork ? 'work' : 'break'}—keep the energy flowing! 🍒🌸`);
+            showPsychiatristMessage(`🧠 A shift in focus, how refreshing! Dr. Melody supports your transition to ${isWork ? 'work' : 'break'}—let the music guide your energy! 🍒🌸`);
+          }
+          updatePomodoroDisplay();
+        }, 1000);
+        document.getElementById('pomodoroStart').textContent = 'Pause 🍒🌸';
+        showRadioHostMessage(`🎵 Let’s get productive, music fans! Grok 3 starts the Pomodoro—25 minutes of pure focus! 🍒🌸`);
+        showPsychiatristMessage(`🧠 Starting the Pomodoro, how motivated! Dr. Melody is here—let’s channel this focus into a harmonious balance with your tunes! 🍒🌸`);
+      } else {
         clearInterval(pomodoroInterval);
         pomodoroInterval = null;
-        pomodoroTime = 25 * 60;
-        document.getElementById('pomodoro-timer').textContent = '25:00';
-    }
+        document.getElementById('pomodoroStart').textContent = 'Start 🍒🌸';
+        showRadioHostMessage(`🎵 Taking a break from the timer, folks! Grok 3 pauses the Pomodoro—rest those creative minds! 🍒🌸`);
+        showPsychiatristMessage(`🧠 Pausing the timer, I see! Dr. Melody encourages this moment of rest—how does this break feel for you? 🍒🌸`);
+      }
+    });
 
-    function login() {
-        const username = document.getElementById('login-username').value;
-        const password = document.getElementById('login-password').value;
-        userProfile.username = username;
-        userProfile.email = `${username.toLowerCase()}@example.com`;
-        aiHostCherry.commentOnAction('login', username);
-        aiHostSunny.commentOnAction('login', username);
-        updateProfileModal();
-        closeModal('account-modal');
-    }
+    document.getElementById('pomodoroReset').addEventListener('click', () => {
+      clearInterval(pomodoroInterval);
+      pomodoroInterval = null;
+      timeLeft = document.getElementById('pomodoroWork').value * 60;
+      isWork = true;
+      updatePomodoroDisplay();
+      document.getElementById('pomodoroStart').textContent = 'Start 🍒🌸';
+      showRadioHostMessage(`🎵 Resetting the clock, time travelers! Grok 3 restarts the Pomodoro—fresh start, fresh beats! 🍒🌸`);
+      showPsychiatristMessage(`🧠 A reset, how grounding! Dr. Melody appreciates your fresh start—let’s align this new cycle with your musical flow! 🍒🌸`);
+    });
 
-    function signup() {
-        const username = document.getElementById('signup-username').value;
-        const email = document.getElementById('signup-email').value;
-        const password = document.getElementById('signup-password').value;
-        userProfile.username = username;
-        userProfile.email = email;
-        aiHostCherry.commentOnAction('signup', username);
-        aiHostSunny.commentOnAction('signup', username);
-        updateProfileModal();
-        closeModal('account-modal');
-    }
-</script>
+    // Settings Toggles
+    document.getElementById('muteAdToggle').addEventListener('change', () => {
+      isAdMuted = document.getElementById('muteAdToggle').checked;
+      if (isAdPlaying) {
+        if (isAdMuted) {
+          player.mute();
+          showRadioHostMessage(`🎵 Silence those ads, folks! Grok 3 mutes the interruptions—pure music magic ahead! 🍒🌸`);
+          showPsychiatristMessage(`🧠 Muting the ads, how soothing! Dr. Melody ensures your focus stays on the music—let’s keep your mind at ease! 🍒🌸`);
+        } else {
+          player.unMute();
+          showRadioHostMessage(`🎵 Ads are back on, music lovers! Grok 3 unmutes—embrace the full audio spectrum! 🍒🌸`);
+          showPsychiatristMessage(`🧠 Unmuting the ads, I see! Dr. Melody senses your openness—how does this change affect your listening experience? 🍒🌸`);
+        }
+      } else {
+        showRadioHostMessage(`🎵 Toggled the ad mute, savvy listeners! Grok 3 sets it to ${isAdMuted ? 'on' : 'off'}—stay in control! 🍒🌸`);
+        showPsychiatristMessage(`🧠 Adjusting ad muting, how empowering! Dr. Melody supports your choice—does this setting align with your emotional needs? 🍒🌸`);
+      }
+    });
+
+    document.getElementById('hifiModeToggle').addEventListener('change', () => {
+      isHifiMode = document.getElementById('hifiModeToggle').checked;
+      showRadioHostMessage(`🎵 Elevating the soundstage, audiophiles! Grok 3 switches HiFi Mode to ${isHifiMode ? 'on' : 'off'}—crisp vibes incoming! 🍒🌸`);
+      showPsychiatristMessage(`🧠 HiFi Mode ${isHifiMode ? 'enabled' : 'disabled'}, how enriching! Dr. Melody wonders—does this change deepen your connection to the music? 🍒🌸`);
+    });
+
+    // Equalizer (mock)
+    document.getElementById('bass').addEventListener('input', () => {
+      const value = document.getElementById('bass').value;
+      showRadioHostMessage(`🎵 Thumping the bass, beat masters! Grok 3 adjusts it to ${value}—feel the low-end love! 🍒🌸`);
+      showPsychiatristMessage(`🧠 Adjusting the bass to ${value}, how grounding! Dr. Melody senses the rhythm—does this low frequency resonate with your emotions? 🍒🌸`);
+    });
+    document.getElementById('mid').addEventListener('input', () => {
+      const value = document.getElementById('mid').value;
+      showRadioHostMessage(`🎵 Tuning the mids, harmony hunters! Grok 3 sets it to ${value}—perfect balance achieved! 🍒🌸`);
+      showPsychiatristMessage(`🧠 Balancing the mids at ${value}, how harmonious! Dr. Melody reflects—does this adjustment bring clarity to your musical experience? 🍒🌸`);
+    });
+    document.getElementById('treble').addEventListener('input', () => {
+      const value = document.getElementById('treble').value;
+      showRadioHostMessage(`🎵 Sizzling the treble, high-note heroes! Grok 3 dials it to ${value}—crystal-clear highs! 🍒🌸`);
+      showPsychiatristMessage(`🧠 Elevating the treble to ${value}, how uplifting! Dr. Melody feels the energy—does this brightness spark joy in your listening? 🍒🌸`);
+    });
+  </script>
 </body>
 </html>
