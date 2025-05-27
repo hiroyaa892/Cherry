@@ -100,6 +100,10 @@
     .retro-button:hover {
       background-color: #e6b8b8;
     }
+    .retro-button.active {
+      background-color: #e6b8b8;
+      border-color: #2d1a1a;
+    }
     .input-section {
       text-align: center;
       margin-bottom: 15px;
@@ -287,6 +291,8 @@
         <button id="prevBtn" class="retro-button">Previous 🍒</button>
         <button id="playPauseBtn" class="retro-button">Play/Pause 🌸</button>
         <button id="nextBtn" class="retro-button">Next 🍒</button>
+        <button id="loopBtn" class="retro-button">Loop 🍒🌸</button>
+        <button id="shuffleBtn" class="retro-button">Shuffle 🍒🌸</button>
       </div>
       <div class="seek-bar">
         <input type="range" id="seekSlider" min="0" max="100" value="0">
@@ -346,6 +352,8 @@
       <label class="text-xs mr-3">AI Volume 🍒🌸</label>
       <input type="range" id="aiVolume" min="0" max="1" step="0.1" value="1" class="w-full">
     </div>
+    <h3 class="font-bold mb-3">Ad Blocking 🍒🌸</h3>
+    <p class="text-xs mb-3">For enhanced ad blocking, set your DNS to <a href="https://dns.adguard.com/" target="_blank" style="color: #c94b4b; text-decoration: underline;">dns.adguard.com</a> in your router or device settings. 🍒🌸</p>
     <h3 class="font-bold mb-3">Equalizer 🍒🌸</h3>
     <div class="flex space-x-3 mb-3">
       <div>
@@ -388,40 +396,47 @@
     let isLooping = false;
     let isShuffling = false;
     let isLoginMode = true;
-    let isAdMuted = true; // Enabled by default
+    let isAdMuted = true;
     let isHifiMode = false;
     let isAdPlaying = false;
     let lastStateChangeTime = 0;
     let lastVideoId = null;
     let lastDuration = 0;
     let lastPlaybackQuality = '';
-    let stateHistory = []; // Rolling window of last 3 states
-    let userInitiatedPlayback = false; // Track user interaction
+    let stateHistory = [];
+    let userInitiatedPlayback = false;
     let lastInterruptTime = 0;
     let interruptInterval = null;
     let audioContext = null;
     let audioSource = null;
     let isBackgroundPlaying = false;
-    const AD_DURATION_THRESHOLD = 60; // Ads can be up to 60 seconds (e.g., skippable)
-    const STATE_WINDOW_SIZE = 3; // Track last 3 states
-    const TRANSITION_THRESHOLD = 5; // Seconds for frequent transitions
+    let adCheckInterval = null;
+    let adInteractionInterval = null;
+    const AD_DURATION_THRESHOLD = 120;
+    const STATE_WINDOW_SIZE = 3;
+    const TRANSITION_THRESHOLD = 5;
+    const AD_CHECK_INTERVAL = 5000;
+    const INTERACTION_INTERVAL = 5000; // 5 seconds between AI interactions
 
-    // YouTube API Key (unhidden)
     const API_KEY = 'AIzaSyBitewTBcoYxggjLlqbMm1qWhFatR6kvP8';
 
+    // Expanded ad patterns with more keywords
     const adPatterns = {
-      title: /(sponsored|ad|promo|advertisement)/i,
-      channel: /(google ads|doubleclick|admob)/i
+      title: /(sponsored|ad|promo|advertisement|commercial|trailer|teaser|presented by|brand|campaign|partner)/i,
+      channel: /(google ads|doubleclick|admob|advertiser|marketing|promotions|sponsor|brand|official ad)/i,
+      description: /(promoted|ad|shop now|sponsor|partner|buy now|click here|limited offer|deal|sale|discount)/i,
+      url: /(ad|promo|sponsor|affiliate|campaign)/i
     };
-    let videoMetadataCache = {}; // Cache metadata to avoid repeated API calls
+
+    let videoMetadataCache = {};
+    let adDetectionStats = { truePositives: 0, falsePositives: 0, total: 0 }; // For AI learning
     const radioHostBubble = document.getElementById('radioHostBubble');
     const psychiatristBubble = document.getElementById('psychiatristBubble');
     const loginSignupBtn = document.getElementById('loginSignupBtn');
     const profileEmailDisplay = document.getElementById('profileEmail');
-    let messageToggleCounter = 0; // Counter to alternate between DJ Sunny and Dr. Melody
-    let aiVolume = 1.0; // Default AI volume
+    let messageToggleCounter = 0;
+    let aiVolume = 1.0;
 
-    // Text-to-Speech Setup
     const synth = window.speechSynthesis;
     let voices = [];
 
@@ -429,13 +444,11 @@
       voices = synth.getVoices();
     }
 
-    // Load voices when available
     loadVoices();
     if (synth.onvoiceschanged !== undefined) {
       synth.onvoiceschanged = loadVoices;
     }
 
-    // Modified speakText to respect AI volume
     function speakText(text, pitch, bubbleElement) {
       return new Promise((resolve) => {
         const cleanText = text.replace(/☀️|🧠|🍒|🌸/g, '').trim();
@@ -450,7 +463,7 @@
         const utterance = new SpeechSynthesisUtterance(cleanText);
         utterance.pitch = pitch;
         utterance.rate = 1.0;
-        utterance.volume = aiVolume; // Apply AI volume setting
+        utterance.volume = aiVolume;
         utterance.onend = () => {
           bubbleElement.classList.add('hidden');
           resolve();
@@ -478,16 +491,19 @@
       });
     }
 
-    // Enhanced DJ Sunny Phrases (Smarter, Talkative, Interactive)
     const adDetectedPhrases = [
-      `☀️ Whoa, sunshine squad! DJ Sunny’s spotting an ad—muting that cloud to keep our sunny beats shining! 🍒🌸`,
-      `☀️ Ad alert, music rays! DJ Sunny’s on it—silencing that interruption for pure sunshine vibes! 🍒🌸`,
-      `☀️ No ads in my sunny set! DJ Sunny mutes that commercial break—only bright tunes for you! 🍒🌸`,
-      `☀️ Ad incoming, but don’t worry, fans! DJ Sunny’s muting it—keeping our airwaves sunny and smooth! 🍒🌸`
+      `☀️ Ad spotted with confidence, sunshine squad! DJ Sunny mutes this cloud—try dns.adguard.com for even better blocking! 🍒🌸`,
+      `☀️ High-probability ad alert, music rays! DJ Sunny’s silencing it—switch to dns.adguard.com for ad-free vibes! 🍒🌸`,
+      `☀️ My ad sensors are buzzing, crew! DJ Sunny mutes this commercial—dns.adguard.com can zap ads entirely! 🍒🌸`,
+      `☀️ Confirmed ad incoming, fans! DJ Sunny mutes it—use dns.adguard.com to stop ads at the source! 🍒🌸`,
+      `☀️ Ad detection at peak, sunshine crew! DJ Sunny slams the mute—dns.adguard.com can block it entirely! 🍒🌸`,
+      `☀️ Ad invasion confirmed! DJ Sunny mutes it quick—check out dns.adguard.com for a cleaner listen! 🍒🌸`,
+      `☀️ My AI says this is an ad, sunbeams! DJ Sunny mutes it—dns.adguard.com could zap these ads away! 🍒🌸`,
+      `☀️ Ad flagged with precision, music lovers! DJ Sunny mutes it fast—set your DNS to dns.adguard.com for pure tunes! 🍒🌸`
     ];
 
     const adEndedPhrases = [
-      `☀️ The ad’s gone, sunshine crew! DJ Sunny unmutes—back to those radiant beats! 🍒🌸`,
+      `☀️ Ad’s gone, sunshine crew! DJ Sunny unmutes—back to those radiant beats! 🍒🌸`,
       `☀️ Ad break over, rhythm rays! DJ Sunny cranks up the sunshine—let’s glow with the music! 🍒🌸`,
       `☀️ We’re ad-free again, tune travelers! DJ Sunny restores the sunny sound—full blast ahead! 🍒🌸`,
       `☀️ Ad’s out, vibes are in! DJ Sunny unmutes—let’s bask in these brilliant tracks! 🍒🌸`
@@ -498,71 +514,71 @@
       `☀️ Breaking in with some sunny vibes, folks! DJ Sunny’s loving this song’s chill lo-fi energy—perfect for a relaxed afternoon! 🍒🌸`,
       `☀️ Hey there, music rays! DJ Sunny popping in—this artist dropped this banger in 2023, and it’s got over 5M views! 🍒🌸`,
       `☀️ Quick sunny interruption, crew! DJ Sunny’s digging this track’s upbeat tempo—feels like a solid 130 BPM! 🍒🌸`,
-      `☀️ Sunshine alert, listeners! DJ Sunny here—this song’s got a classic pop vibe, and I’m obsessed! 🍒🌸`
+      `☀️ Sunshine alert, listeners! DJ Sunny here—this song’s got a classic pop vibe, and I’m obsessed! 🍒🌸`,
+      `☀️ Time out, sunshine fans! DJ Sunny senses the next beat coming—let’s prep for a smooth transition! 🍒🌸`,
+      `☀️ Mid-track magic, music rays! DJ Sunny’s predicting the next drop—get ready for a vibe shift! 🍒🌸`,
+      `☀️ Hey, tune travelers! DJ Sunny’s catching the rhythm shift—next song’s on the horizon, stay tuned! 🍒🌸`
     ];
 
     const loadPlaylistPhrases = [
       `☀️ Rise and shine, tune travelers! DJ Sunny’s loading your playlist with sunny flair—let’s heat up the airwaves! 🍒🌸`,
-      `☀️ Playlist loaded, sunshine crew! DJ Sunny’s ready to rock this set—looks like we’ve got some indie vibes in here! 🍒🌸`,
-      `☀️ Here we go, music rays! DJ Sunny’s got your playlist locked and loaded—perfect for a great day! 🍒🌸`,
-      `☀️ Your playlist is live, sunny fans! DJ Sunny’s spinning these tracks with love—looks like a 10-song list! 🍒🌸`
+      `☀️ Playlist loaded, sunshine crew! DJ Sunny’s ready to rock this set—looks like we’ve got some indie vibes in here! 🍒🌸`
     ];
 
     const loadVideoPhrases = [
       `☀️ Bright choice, sunshine fans! DJ Sunny’s spinning your video—get ready for a sunny soundwave! 🍒🌸`,
-      `☀️ Single track loaded, music rays! DJ Sunny’s here to make it shine—this song’s a 4-minute banger! 🍒🌸`,
-      `☀️ Video’s up, sunshine squad! DJ Sunny’s playing this gem—looks like a pop hit from 2022! 🍒🌸`,
-      `☀️ Spinning your pick, sunny listeners! DJ Sunny’s got this track rolling—it’s got a solid 100 BPM! 🍒🌸`
+      `☀️ Single track loaded, music rays! DJ Sunny’s here to make it shine—this song’s a 4-minute banger! 🍒🌸`
     ];
 
     const playPhrases = [
       `☀️ Let’s light it up, sunshine lovers! DJ Sunny hits play—feel the sunny rhythm! 🍒🌸`,
-      `☀️ Play button smashed, music rays! DJ Sunny’s bringing the heat—this song’s a classic rock anthem! 🍒🌸`,
-      `☀️ We’re rolling, sunny crew! DJ Sunny hits play—this track’s got a dreamy synth vibe! 🍒🌸`,
-      `☀️ Sunshine beats incoming, fans! DJ Sunny’s playing this gem—it’s a 3-minute pop bop! 🍒🌸`
+      `☀️ Play button smashed, music rays! DJ Sunny’s bringing the heat—this song’s a classic rock anthem! 🍒🌸`
     ];
 
     const pausePhrases = [
       `☀️ Taking a sunshine break, folks! DJ Sunny pauses the beats—enjoy the calm glow! 🍒🌸`,
-      `☀️ Pause mode on, music rays! DJ Sunny’s giving you a breather—this track’s got a chill lo-fi vibe. 🍒🌸`,
-      `☀️ Holding the sunny vibes, crew! DJ Sunny pauses the music—perfect time to reflect! 🍒🌸`,
-      `☀️ Quick sunny break, listeners! DJ Sunny hits pause—let’s soak in the silence for a sec! 🍒🌸`
+      `☀️ Pause mode on, music rays! DJ Sunny’s giving you a breather—this track’s got a chill lo-fi vibe. 🍒🌸`
     ];
 
     const nextPhrases = [
       `☀️ Next stop, sunshine station! DJ Sunny’s cueing up the next track—keep the rays rolling! 🍒🌸`,
-      `☀️ Moving along, music rays! DJ Sunny spins the next song—this track’s got a reggae vibe! 🍒🌸`,
-      `☀️ Next track up, sunny fans! DJ Sunny’s keeping the party going—this song’s a 2024 release! 🍒🌸`,
-      `☀️ Onward we go, sunshine crew! DJ Sunny plays the next tune—this one’s a 5-minute epic! 🍒🌸`
+      `☀️ Moving along, music rays! DJ Sunny spins the next song—this track’s got a reggae vibe! 🍒🌸`
     ];
 
     const prevPhrases = [
       `☀️ Rewind those rays, listeners! DJ Sunny spins back to the previous sunny gem—relive the glow! 🍒🌸`,
-      `☀️ Backtracking, music rays! DJ Sunny plays the last song again—this one’s a country classic! 🍒🌸`,
-      `☀️ Let’s revisit, sunny crew! DJ Sunny spins the previous track—this song’s got a 90s pop feel! 🍒🌸`,
-      `☀️ Rewinding the sunshine, fans! DJ Sunny’s bringing back the last song—this one’s a 3-minute bop! 🍒🌸`
+      `☀️ Backtracking, music rays! DJ Sunny plays the last song again—this one’s a country classic! 🍒🌸`
     ];
 
     const queueSelectPhrases = [
       `☀️ Stellar pick, sunshine crew! DJ Sunny’s playing your queue choice—feel the heat! 🍒🌸`,
-      `☀️ Queue selection on point, music rays! DJ Sunny spins your pick—this song’s a 2021 release! 🍒🌸`,
-      `☀️ Loving your taste, sunny fans! DJ Sunny plays your queue choice—this track’s got a chill acoustic sound! 🍒🌸`,
-      `☀️ Queue pick activated, sunshine squad! DJ Sunny’s spinning this gem—it’s a 4-minute indie track! 🍒🌸`
+      `☀️ Queue selection on point, music rays! DJ Sunny spins your pick—this song’s a 2021 release! 🍒🌸`
     ];
 
     const historySelectPhrases = [
       `☀️ Nostalgia alert, sunshine fans! DJ Sunny’s replaying a golden oldie from your history—pure radiance! 🍒🌸`,
-      `☀️ History lesson time, music rays! DJ Sunny spins a past favorite—this song’s a 5-minute epic! 🍒🌸`,
-      `☀️ Rewind to the classics, sunny crew! DJ Sunny plays this history pick—it’s got a rock edge! 🍒🌸`,
-      `☀️ Back in time, sunshine squad! DJ Sunny’s replaying this history gem—it’s a 3-minute pop hit! 🍒🌸`
+      `☀️ History lesson time, music rays! DJ Sunny spins a past favorite—this song’s a 5-minute epic! 🍒🌸`
     ];
 
-    // Enhanced Dr. Melody Phrases (Smarter, Talkative, Interactive)
+    const loopPhrases = [
+      `☀️ Looping on, sunshine fans! DJ Sunny keeps this gem on repeat—let’s soak in the rays! 🍒🌸`,
+      `☀️ Loop off, music rays! DJ Sunny moves us forward—new sunny beats ahead! 🍒🌸`
+    ];
+
+    const shufflePhrases = [
+      `☀️ Shuffling the sunny deck, tune travelers! DJ Sunny mixes it up—expect the unexpected! 🍒🌸`,
+      `☀️ Shuffle off, sunshine crew! DJ Sunny sets the order straight—back to the sunny flow! 🍒🌸`
+    ];
+
     const adDetectedPhrasesPsych = [
-      `🧠 Oh dear, an ad has surfaced! Dr. Melody here, silencing it to protect your musical sanctuary—let’s keep your emotions flowing with the melody! 🍒🌸`,
-      `🧠 I sense an ad interrupting your vibe! Dr. Melody is muting it, ensuring your inner harmony remains undisturbed—let the music heal! 🍒🌸`,
-      `🧠 An ad, how intrusive! Dr. Melody mutes it for you—let’s maintain the therapeutic flow of these tunes for your soul! 🍒🌸`,
-      `🧠 Not to worry, an ad has appeared, but Dr. Melody is here to mute it—your emotional journey through music remains uninterrupted! 🍒🌸`
+      `🧠 My analysis confirms an ad, dear listener! Dr. Melody silences it—try dns.adguard.com for a smoother experience! 🍒🌸`,
+      `🧠 I’m certain this is an ad! Dr. Melody mutes it—dns.adguard.com can block ads at the source! 🍒🌸`,
+      `🧠 Ad detected with precision! Dr. Melody mutes it—dns.adguard.com can enhance your listening peace! 🍒🌸`,
+      `🧠 An ad, confirmed by my insights! Dr. Melody mutes it—set your DNS to dns.adguard.com for ad-free therapy! 🍒🌸`,
+      `🧠 My diagnostics spot an ad! Dr. Melody mutes it swiftly—dns.adguard.com could prevent these interruptions! 🍒🌸`,
+      `🧠 Ad flagged by my analysis! Dr. Melody silences it—explore dns.adguard.com for a cleaner journey! 🍒🌸`,
+      `🧠 High-likelihood ad detected! Dr. Melody mutes it—dns.adguard.com might maintain your focus on healing tunes! 🍒🌸`,
+      `🧠 A commercial break, analytically confirmed! Dr. Melody mutes it—consider dns.adguard.com for a serene vibe! 🍒🌸`
     ];
 
     const adEndedPhrasesPsych = [
@@ -574,65 +590,59 @@
 
     const loadPlaylistPhrasesPsych = [
       `🧠 A playlist, how wonderful! Dr. Melody senses this selection might reflect your mood—let’s see how it resonates with your inner self! 🍒🌸`,
-      `🧠 Playlist loaded, dear listener! Dr. Melody notices a mix of genres here—perhaps a sign of your diverse emotions today! 🍒🌸`,
-      `🧠 Your playlist is ready, I see! Dr. Melody feels the energy of these tracks—perfect for a great day! 🍒🌸`,
-      `🧠 A thoughtful playlist choice! Dr. Melody senses this could be a journey of joy and reflection—let’s explore it together! 🍒🌸`
+      `🧠 Playlist loaded, dear listener! Dr. Melody notices a mix of genres here—perhaps a sign of your diverse emotions today! 🍒🌸`
     ];
 
     const loadVideoPhrasesPsych = [
       `🧠 A single track, I see! Dr. Melody wonders what emotions this song stirs in you—let’s listen and reflect together! 🍒🌸`,
-      `🧠 Video loaded, dear listener! Dr. Melody senses this song’s chill vibe—perhaps a moment of calm for you today! 🍒🌸`,
-      `🧠 A song to start our journey! Dr. Melody feels this track’s pop energy—perfect for lifting your spirits! 🍒🌸`,
-      `🧠 Your video is playing, I see! Dr. Melody notices this song’s steady tempo—around 100 BPM. 🍒🌸`
+      `🧠 Video loaded, dear listener! Dr. Melody senses this song’s chill vibe—perhaps a moment of calm for you today! 🍒🌸`
     ];
 
     const playPhrasesPsych = [
       `🧠 The music resumes! Dr. Melody senses your energy shifting—how does this song lift your spirits? 🍒🌸`,
-      `🧠 We’re playing again, dear listener! Dr. Melody feels the rock energy in this track—electric guitars often evoke passion! 🍒🌸`,
-      `🧠 Music flowing once more! Dr. Melody notices this song’s synthwave vibe—dreamy and reflective! 🍒🌸`,
-      `🧠 The melody continues! Dr. Melody senses this pop track’s uplifting tone—perfect for a mood boost! 🍒🌸`
+      `🧠 We’re playing again, dear listener! Dr. Melody feels the rock energy in this track—electric guitars often evoke passion! 🍒🌸`
     ];
 
     const pausePhrasesPsych = [
       `🧠 A pause in the music, how intriguing! Dr. Melody wonders—does this silence bring you calm or anticipation? 🍒🌸`,
-      `🧠 Pausing the melody, I see! Dr. Melody feels this moment of quiet—perhaps a chance to reflect! 🍒🌸`,
-      `🧠 A brief pause, dear listener! Dr. Melody senses this break as a moment to breathe—this song’s artist often explores deep themes! 🍒🌸`,
-      `🧠 Music on hold, how thoughtful! Dr. Melody appreciates this pause—silence can be healing too! 🍒🌸`
+      `🧠 Pausing the melody, I see! Dr. Melody feels this moment of quiet—perhaps a chance to reflect! 🍒🌸`
     ];
 
     const nextPhrasesPsych = [
       `🧠 Moving to the next song, I see! Dr. Melody hopes this track brings a new layer of joy—how does it make you feel? 🍒🌸`,
-      `🧠 On to the next melody! Dr. Melody senses this reggae track’s relaxed vibe—offbeat rhythms often soothe the soul! 🍒🌸`,
-      `🧠 A fresh track begins! Dr. Melody feels this 2024 release’s modern energy—perfect for a new experience! 🍒🌸`,
-      `🧠 The next song plays, dear listener! Dr. Melody notices its 5-minute length—a chance for deeper reflection! 🍒🌸`
+      `🧠 On to the next melody! Dr. Melody senses this reggae track’s relaxed vibe—offbeat rhythms often soothe the soul! 🍒🌸`
     ];
 
     const prevPhrasesPsych = [
       `🧠 A step back in your musical journey! Dr. Melody senses nostalgia—does this song hold special memories for you? 🍒🌸`,
-      `🧠 Revisiting the previous track, I see! Dr. Melody feels this country song’s storytelling—such songs often evoke emotion! 🍒🌸`,
-      `🧠 Back to an earlier melody! Dr. Melody senses a 90s pop vibe—nostalgia can be so comforting! 🍒🌸`,
-      `🧠 Rewinding to the last song! Dr. Melody appreciates this revisit—its 3-minute length is perfect for a quick reflection! 🍒🌸`
+      `🧠 Revisiting the previous track, I see! Dr. Melody feels this country song’s storytelling—such songs often evoke emotion! 🍒🌸`
     ];
 
     const queueSelectPhrasesPsych = [
       `🧠 A thoughtful choice from the queue! Dr. Melody is curious—what drew you to this song today? 🍒🌸`,
-      `🧠 Queue selection playing now! Dr. Melody notices this 2021 track’s popularity—10M views! 🍒🌸`,
-      `🧠 A lovely queue pick, dear listener! Dr. Melody senses this acoustic song’s calm energy—perfect for introspection! 🍒🌸`,
-      `🧠 Playing your queue choice! Dr. Melody feels this indie track’s raw emotion—indie music often carries authenticity! 🍒🌸`
+      `🧠 Queue selection playing now! Dr. Melody notices this 2021 track’s popularity—10M views! 🍒🌸`
     ];
 
     const historySelectPhrasesPsych = [
       `🧠 Revisiting a past favorite, I see! Dr. Melody wonders—what emotions does this song bring back for you? 🍒🌸`,
-      `🧠 A history pick, how meaningful! Dr. Melody senses this 5-minute epic’s depth—it even won an award! 🍒🌸`,
-      `🧠 Back to a rock classic from your history! Dr. Melody feels its energy—rock can be so invigorating! 🍒🌸`,
-      `🧠 Replaying a pop hit from your history! Dr. Melody appreciates this choice—pop often uplifts the spirit! 🍒🌸`
+      `🧠 A history pick, how meaningful! Dr. Melody senses this 5-minute epic’s depth—it even won an award! 🍒🌸`
+    ];
+
+    const loopPhrasesPsych = [
+      `🧠 Looping this track, how immersive! Dr. Melody feels its repetition—does it deepen your emotional connection? 🍒🌸`,
+      `🧠 Loop off, dear listener! Dr. Melody guides us forward—new melodies await to stir your soul! 🍒🌸`
+    ];
+
+    const shufflePhrasesPsych = [
+      `🧠 Shuffling the playlist, how spontaneous! Dr. Melody embraces the unpredictability—let’s see what emotions arise! 🍒🌸`,
+      `🧠 Shuffle off, I see! Dr. Melody appreciates the return to order—how does this flow feel for you? 🍒🌸`
     ];
 
     async function showRadioHostMessage(message, forceShow = false) {
       if (forceShow || messageToggleCounter % 2 === 0) {
         radioHostBubble.textContent = message;
         radioHostBubble.classList.remove('hidden');
-        await speakText(message, 1.2, radioHostBubble); // Higher pitch for DJ Sunny
+        await speakText(message, 1.2, radioHostBubble);
       }
       if (!forceShow) messageToggleCounter++;
     }
@@ -641,7 +651,7 @@
       if (forceShow || messageToggleCounter % 2 === 1) {
         psychiatristBubble.textContent = message;
         psychiatristBubble.classList.remove('hidden');
-        await speakText(message, 0.8, psychiatristBubble); // Lower pitch for Dr. Melody
+        await speakText(message, 0.8, psychiatristBubble);
       }
       if (!forceShow) messageToggleCounter++;
     }
@@ -650,24 +660,26 @@
       return phrases[Math.floor(Math.random() * phrases.length)];
     }
 
-    // Modified Mid-Song Interruption Logic to Pause Music
     function startMidSongInterruptions() {
       if (interruptInterval) clearInterval(interruptInterval);
       interruptInterval = setInterval(() => {
         if (player && player.getPlayerState() === YT.PlayerState.PLAYING && !isAdPlaying && !document.hidden) {
           const currentTime = player.getCurrentTime();
+          const duration = player.getDuration();
+          const progress = currentTime / duration;
           const timeSinceLastInterrupt = Date.now() - lastInterruptTime;
-          if (currentTime > 30 && timeSinceLastInterrupt >= 30000) {
-            if (Math.random() < 0.1) {
+
+          if (duration > 0 && progress >= 0.5 && progress <= 0.7 && timeSinceLastInterrupt >= 30000) {
+            if (Math.random() < 0.3) {
               const initialState = player.getPlayerState();
               if (initialState === YT.PlayerState.PLAYING) {
-                player.pauseVideo(); // Pause music during interruption
+                player.pauseVideo();
               }
               const interruptMessage = getRandomPhrase(midSongInterruptPhrases);
               showRadioHostMessage(interruptMessage, true).then(() => {
-                showPsychiatristMessage(`🧠 DJ Sunny’s interruption brought a fun moment, didn’t it? Dr. Melody feels the energy—how did that break in the music affect your mood? 🍒🌸`, true).then(() => {
+                showPsychiatristMessage(`🧠 DJ Sunny’s timing is impeccable! Dr. Melody agrees—this break enhances your musical journey. How’s the vibe? 🍒🌸`, true).then(() => {
                   if (initialState === YT.PlayerState.PLAYING) {
-                    player.playVideo(); // Resume music after both messages
+                    player.playVideo();
                   }
                   lastInterruptTime = Date.now();
                 });
@@ -675,10 +687,9 @@
             }
           }
         }
-      }, 45000); // 45 seconds, 10% chance
+      }, 45000);
     }
 
-    // Simulated Authentication Functions (using localStorage)
     async function login(email, password) {
       try {
         const users = JSON.parse(localStorage.getItem('users')) || {};
@@ -753,7 +764,6 @@
       }
     }
 
-    // Run on page load
     checkAuthOnLoad();
 
     function onYouTubeIframeAPIReady() {
@@ -767,7 +777,6 @@
           'onPlaybackQualityChange': onPlaybackQualityChange
         }
       });
-      // Show initial messages but don't play music yet
       showRadioHostMessage('☀️ Hey there, sunshine squad! This is DJ Sunny, dropping the hottest tunes your way! Let’s light up the airwaves! What’s your vibe today? 🍒🌸', true)
         .then(() => showPsychiatristMessage('🧠 Hello, dear listener! I’m Dr. Melody, your musical therapist. Let’s explore how these tunes resonate with your soul! How are you feeling right now? 🍒🌸', true));
     }
@@ -784,6 +793,7 @@
       }
       startMidSongInterruptions();
       setupBackgroundPlayback();
+      startAdDetectionPolling();
     }
 
     function onPlaybackQualityChange(event) {
@@ -808,6 +818,7 @@
           const metadata = {
             title: data.items[0].snippet.title,
             channel: data.items[0].snippet.channelTitle,
+            description: data.items[0].snippet.description,
             publishedAt: data.items[0].snippet.publishedAt
           };
           videoMetadataCache[videoId] = metadata;
@@ -820,17 +831,141 @@
       }
     }
 
-    async function isLikelyAd(videoId, duration) {
+    async function calculateAdScore(videoId, duration, currentQuality) {
       const metadata = await fetchVideoMetadata(videoId);
-      if (!metadata) return false;
+      let score = 0;
 
-      const { title, channel } = metadata;
+      // 1. Metadata-based scoring
+      if (metadata) {
+        const { title, channel, description } = metadata;
+        if (adPatterns.title.test(title)) score += 0.4; // High confidence
+        if (adPatterns.channel.test(channel)) score += 0.3;
+        if (adPatterns.description.test(description)) score += 0.3;
+
+        // Check for suspicious publication dates (e.g., very recent for ads)
+        const publishedDate = new Date(metadata.publishedAt);
+        const now = new Date();
+        const ageInDays = (now - publishedDate) / (1000 * 60 * 60 * 24);
+        if (ageInDays < 7) score += 0.1; // Recent videos might be promotional
+      }
+
+      // 2. Duration-based scoring
       const isShortVideo = duration > 0 && duration <= AD_DURATION_THRESHOLD;
-      const hasAdKeywords = adPatterns.title.test(title) || adPatterns.channel.test(channel);
+      if (isShortVideo) score += 0.3;
 
-      console.log(`Metadata check - Title: ${title}, Channel: ${channel}, Duration: ${duration}s, IsShortVideo: ${isShortVideo}, HasAdKeywords: ${hasAdKeywords}`);
+      // 3. Playback behavior scoring
+      const isFrequentTransition = stateHistory.length >= 2 && 
+        (stateHistory[stateHistory.length - 1].time - stateHistory[stateHistory.length - 2].time) / 1000 < TRANSITION_THRESHOLD;
+      if (isFrequentTransition) score += 0.2;
 
-      return hasAdKeywords || isShortVideo;
+      const isAdLikeTransition = stateHistory.some(s => s.state === YT.PlayerState.PAUSED) && 
+        stateHistory.some(s => s.state === YT.PlayerState.PLAYING);
+      if (isAdLikeTransition) score += 0.15;
+
+      // 4. Quality change scoring
+      const qualityLevels = ['tiny', 'small', 'medium', 'large', 'hd720', 'hd1080', 'highres'];
+      const currentQualityIndex = qualityLevels.indexOf(currentQuality);
+      const lastQualityIndex = qualityLevels.indexOf(lastPlaybackQuality);
+      const isQualityDrop = lastQualityIndex > -1 && currentQualityIndex > -1 && currentQualityIndex < lastQualityIndex;
+      if (isQualityDrop) score += 0.15; // Ads often use lower quality
+
+      // 5. Unexpected video scoring
+      const expectedVideoId = currentIndex >= 0 && currentIndex < playlist.length ? playlist[currentIndex].id : null;
+      const isUnexpectedVideo = videoId !== expectedVideoId && expectedVideoId !== null;
+      if (isUnexpectedVideo) score += 0.25;
+
+      // 6. Auto-play detection
+      if (!userInitiatedPlayback) score += 0.1;
+
+      console.log(`Ad Score for videoId ${videoId}: ${score.toFixed(2)} - Metadata: ${JSON.stringify(metadata)}, Duration: ${duration}s, FrequentTransition: ${isFrequentTransition}, AdLikeTransition: ${isAdLikeTransition}, QualityDrop: ${isQualityDrop}, UnexpectedVideo: ${isUnexpectedVideo}, AutoPlay: ${!userInitiatedPlayback}`);
+
+      return score;
+    }
+
+    async function isLikelyAd(videoId, duration, currentQuality) {
+      const score = await calculateAdScore(videoId, duration, currentQuality);
+      const threshold = 0.5; // Adjustable threshold
+      return score >= threshold;
+    }
+
+    function startAdDetectionPolling() {
+      if (adCheckInterval) clearInterval(adCheckInterval);
+      adCheckInterval = setInterval(async () => {
+        if (player && player.getPlayerState() === YT.PlayerState.PLAYING) {
+          const currentVideoId = player.getVideoData()['video_id'];
+          const duration = player.getDuration();
+          const currentQuality = player.getPlaybackQuality();
+          const isAd = await isLikelyAd(currentVideoId, duration, currentQuality);
+
+          console.log(`Ad Polling - VideoID: ${currentVideoId}, IsAd: ${isAd}`);
+
+          if (isAd) {
+            if (!isAdPlaying) {
+              isAdPlaying = true;
+              lastVideoId = currentVideoId;
+              adDetectionStats.total++;
+              adDetectionStats.truePositives++;
+              if (isAdMuted) {
+                player.mute();
+                const randomAdPhrase = getRandomPhrase(adDetectedPhrases);
+                const randomAdPhrasePsych = getRandomPhrase(adDetectedPhrasesPsych);
+                showRadioHostMessage(randomAdPhrase);
+                showPsychiatristMessage(randomAdPhrasePsych);
+                startAdInteraction();
+              }
+            }
+          } else {
+            if (isAdPlaying) {
+              isAdPlaying = false;
+              lastVideoId = currentVideoId;
+              if (isAdMuted) {
+                player.unMute();
+                const randomAdEndPhrase = getRandomPhrase(adEndedPhrases);
+                const randomAdEndPhrasePsych = getRandomPhrase(adEndedPhrasesPsych);
+                showRadioHostMessage(randomAdEndPhrase);
+                showPsychiatristMessage(randomAdEndPhrasePsych);
+                stopAdInteraction();
+              }
+            }
+          }
+        }
+      }, AD_CHECK_INTERVAL);
+    }
+
+    function startAdInteraction() {
+      if (adInteractionInterval) clearInterval(adInteractionInterval);
+      let isSunnyTurn = true;
+      adInteractionInterval = setInterval(async () => {
+        if (isAdPlaying) {
+          if (isSunnyTurn) {
+            const sunnyPhrases = [
+              `☀️ Hey Dr. Melody, my ad score’s off the charts—muted this one! Try dns.adguard.com! 🍒🌸`,
+              `☀️ Yo, Doc! My AI’s certain this is an ad—muted it! Use dns.adguard.com! 🍒🌸`,
+              `☀️ Dr. Melody, my detection’s sharp—ad muted! dns.adguard.com could help! 🍒🌸`,
+              `☀️ Doc, my ad sensors are spot on—muted! Set DNS to dns.adguard.com! 🍒🌸`
+            ];
+            await showRadioHostMessage(getRandomPhrase(sunnyPhrases));
+          } else {
+            const melodyPhrases = [
+              `🧠 DJ Sunny, my analysis agrees—an ad indeed! Let’s reflect during this silence—try dns.adguard.com! 🍒🌸`,
+              `🧠 Sunny, my diagnostics confirm your detection—well muted! Use dns.adguard.com! 🍒🌸`,
+              `🧠 Sunny, I concur with your ad score—great muting! dns.adguard.com could help! 🍒🌸`,
+              `🧠 DJ Sunny, our combined AI nailed it—ad muted! Set DNS to dns.adguard.com! 🍒🌸`
+            ];
+            await showPsychiatristMessage(getRandomPhrase(melodyPhrases));
+          }
+          isSunnyTurn = !isSunnyTurn;
+        } else {
+          stopAdInteraction();
+        }
+      }, INTERACTION_INTERVAL);
+    }
+
+    function stopAdInteraction() {
+      if (adInteractionInterval) {
+        clearInterval(adInteractionInterval);
+        adInteractionInterval = null;
+      }
     }
 
     function onPlayerStateChange(event) {
@@ -838,48 +973,33 @@
       const state = event.data;
       const currentVideoId = player.getVideoData()['video_id'];
       const duration = player.getDuration();
+      const currentQuality = player.getPlaybackQuality();
 
-      // Update state history (rolling window of last 3 states)
       stateHistory.push({ state, time: currentTime });
       if (stateHistory.length > STATE_WINDOW_SIZE) {
         stateHistory.shift();
       }
 
-      // Analyze state transitions
-      const isFrequentTransition = stateHistory.length >= 2 && 
-        (currentTime - stateHistory[stateHistory.length - 2].time) / 1000 < TRANSITION_THRESHOLD;
-      const isAdLikeTransition = stateHistory.some(s => s.state === YT.PlayerState.PAUSED) && 
-        stateHistory.some(s => s.state === YT.PlayerState.PLAYING) && 
-        state === YT.PlayerState.PLAYING;
-
-      // Check playback quality change
-      const isQualityChange = lastPlaybackQuality && player.getPlaybackQuality() !== lastPlaybackQuality;
-
-      // Check if playback was user-initiated
-      const isAutoPlay = !userInitiatedPlayback;
-
-      // Determine if this is likely an ad
       const detectAd = async () => {
-        const isShortVideo = duration > 0 && duration <= AD_DURATION_THRESHOLD;
-        const isMetadataAd = await isLikelyAd(currentVideoId, duration);
-        const isLikelyAdPlayback = (isShortVideo || isFrequentTransition || isAdLikeTransition || isQualityChange) && isAutoPlay;
+        const isAd = await isLikelyAd(currentVideoId, duration, currentQuality);
+        console.log(`Ad Detection on State Change - VideoID: ${currentVideoId}, State: ${state}, IsAd: ${isAd}`);
 
-        console.log(`Ad Detection - VideoID: ${currentVideoId}, Duration: ${duration}s, IsShortVideo: ${isShortVideo}, FrequentTransition: ${isFrequentTransition}, AdLikeTransition: ${isAdLikeTransition}, QualityChange: ${isQualityChange}, AutoPlay: ${isAutoPlay}, MetadataAd: ${isMetadataAd}`);
-
-        return isMetadataAd || isLikelyAdPlayback;
+        return isAd;
       };
 
-      // Update ad playing state
       detectAd().then(isAd => {
         if (currentVideoId !== lastVideoId) {
           if (isAd) {
             isAdPlaying = true;
+            adDetectionStats.total++;
+            adDetectionStats.truePositives++;
             if (isAdMuted) {
               player.mute();
               const randomAdPhrase = getRandomPhrase(adDetectedPhrases);
               const randomAdPhrasePsych = getRandomPhrase(adDetectedPhrasesPsych);
               showRadioHostMessage(randomAdPhrase);
               showPsychiatristMessage(randomAdPhrasePsych);
+              startAdInteraction();
             }
           } else {
             if (isAdPlaying) {
@@ -890,21 +1010,16 @@
                 const randomAdEndPhrasePsych = getRandomPhrase(adEndedPhrasesPsych);
                 showRadioHostMessage(randomAdEndPhrase);
                 showPsychiatristMessage(randomAdEndPhrasePsych);
+                stopAdInteraction();
               }
             }
           }
+          lastVideoId = currentVideoId;
         }
-
-        // Reset user-initiated flag after detection
-        userInitiatedPlayback = false;
       });
 
-      // Update tracking variables
-      lastStateChangeTime = currentTime;
-      lastVideoId = currentVideoId;
-      lastDuration = duration;
+      userInitiatedPlayback = false;
 
-      // Handle video end for playlist navigation
       if (state === YT.PlayerState.ENDED) {
         if (isLooping && currentIndex >= 0) {
           player.loadVideoById(playlist[currentIndex].id);
@@ -923,13 +1038,6 @@
       }
     }
 
-    function formatTime(seconds) {
-      const min = Math.floor(seconds / 60);
-      const sec = Math.floor(seconds % 60);
-      return `${min}:${sec < 10 ? '0' : ''}${sec}`;
-    }
-
-    // Enhanced loadUrl function to handle various YouTube URL formats
     async function loadUrl() {
       let url = document.getElementById('urlInput').value.trim();
       if (!url) {
@@ -937,32 +1045,27 @@
         return;
       }
 
-      // Normalize URL: ensure it starts with https:// and remove extra spaces
       if (!url.startsWith('http://') && !url.startsWith('https://')) {
         url = 'https://' + url;
       }
 
-      // Parse the URL to extract video or playlist IDs
       let videoId = null;
       let playlistId = null;
 
-      // Regular expressions for different YouTube URL formats
       const videoRegex = [
-        /(?:v=)([a-zA-Z0-9_-]{11})/, // Standard YouTube URL: v=VIDEO_ID
-        /youtu\.be\/([a-zA-Z0-9_-]{11})/, // Shortened youtu.be/VIDEO_ID
-        /embed\/([a-zA-Z0-9_-]{11})/, // Embedded URL: embed/VIDEO_ID
-        /watch\?v=([a-zA-Z0-9_-]{11})/ // Watch URL with parameters
+        /(?:v=)([a-zA-Z0-9_-]{11})/,
+        /youtu\.be\/([a-zA-Z0-9_-]{11})/,
+        /embed\/([a-zA-Z0-9_-]{11})/,
+        /watch\?v=([a-zA-Z0-9_-]{11})/
       ];
 
-      const playlistRegex = /(?:list=)([a-zA-Z0-9_-]+)/; // Playlist URL: list=PLAYLIST_ID
+      const playlistRegex = /(?:list=)([a-zA-Z0-9_-]+)/;
 
-      // Check for playlist ID
       const playlistMatch = url.match(playlistRegex);
       if (playlistMatch) {
         playlistId = playlistMatch[1];
       }
 
-      // Check for video ID across different URL formats
       for (const regex of videoRegex) {
         const match = url.match(regex);
         if (match) {
@@ -973,7 +1076,6 @@
 
       console.log('Parsed URL:', { videoId, playlistId });
 
-      // Handle playlist loading
       if (playlistId) {
         try {
           const response = await fetch(`https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50&playlistId=${playlistId}&key=${API_KEY}`);
@@ -988,10 +1090,9 @@
             updateQueue();
             if (playlist.length > 0) {
               currentIndex = 0;
-              userInitiatedPlayback = true; // User initiated
+              userInitiatedPlayback = true;
               const loadPlaylistMessage = getRandomPhrase(loadPlaylistPhrases);
               const loadPlaylistMessagePsych = getRandomPhrase(loadPlaylistPhrasesPsych);
-              // Wait for both messages to finish speaking before playing
               await showRadioHostMessage(loadPlaylistMessage, true);
               await showPsychiatristMessage(loadPlaylistMessagePsych, true);
               playSong();
@@ -1008,7 +1109,6 @@
           alert('Error loading playlist. Please check the URL or API key.');
         }
       }
-      // Handle single video loading
       else if (videoId) {
         try {
           const response = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${videoId}&key=${API_KEY}`);
@@ -1023,10 +1123,9 @@
             updateQueue();
             if (currentIndex === -1) {
               currentIndex = 0;
-              userInitiatedPlayback = true; // User initiated
+              userInitiatedPlayback = true;
               const loadVideoMessage = getRandomPhrase(loadVideoPhrases);
               const loadVideoMessagePsych = getRandomPhrase(loadVideoPhrasesPsych);
-              // Wait for both messages to finish speaking before playing
               await showRadioHostMessage(loadVideoMessage, true);
               await showPsychiatristMessage(loadVideoMessagePsych, true);
               playSong();
@@ -1040,7 +1139,6 @@
           alert('Error loading video. Please check the URL or API key.');
         }
       }
-      // Invalid URL
       else {
         console.error('Invalid URL format');
         alert('Invalid YouTube URL. Please provide a valid video or playlist URL.');
@@ -1057,32 +1155,53 @@
           history.push(playlist[currentIndex]);
           updateHistory();
         }
-        lastInterruptTime = 0; // Reset interruption timer for the new song
+        lastInterruptTime = 0;
+        lastVideoId = playlist[currentIndex].id;
       }
     }
 
     function playNext() {
-      if (isShuffling) {
-        currentIndex = Math.floor(Math.random() * playlist.length);
+      if (isLooping && currentIndex >= 0) {
+        playSong();
       } else {
-        currentIndex = (currentIndex + 1) % playlist.length;
+        if (isShuffling) {
+          let newIndex;
+          do {
+            newIndex = Math.floor(Math.random() * playlist.length);
+          } while (newIndex === currentIndex && playlist.length > 1);
+          currentIndex = newIndex;
+        } else {
+          currentIndex = (currentIndex + 1) % playlist.length;
+        }
+        userInitiatedPlayback = true;
+        playSong();
+        const nextMessage = getRandomPhrase(nextPhrases);
+        const nextMessagePsych = getRandomPhrase(nextPhrasesPsych);
+        showRadioHostMessage(nextMessage);
+        showPsychiatristMessage(nextMessagePsych);
       }
-      userInitiatedPlayback = true; // User initiated
-      playSong();
-      const nextMessage = getRandomPhrase(nextPhrases);
-      const nextMessagePsych = getRandomPhrase(nextPhrasesPsych);
-      showRadioHostMessage(nextMessage);
-      showPsychiatristMessage(nextMessagePsych);
     }
 
     function playPrevious() {
-      currentIndex = (currentIndex - 1 + playlist.length) % playlist.length;
-      userInitiatedPlayback = true; // User initiated
-      playSong();
-      const prevMessage = getRandomPhrase(prevPhrases);
-      const prevMessagePsych = getRandomPhrase(prevPhrasesPsych);
-      showRadioHostMessage(prevMessage);
-      showPsychiatristMessage(prevMessagePsych);
+      if (isLooping && currentIndex >= 0) {
+        playSong();
+      } else {
+        if (isShuffling) {
+          let newIndex;
+          do {
+            newIndex = Math.floor(Math.random() * playlist.length);
+          } while (newIndex === currentIndex && playlist.length > 1);
+          currentIndex = newIndex;
+        } else {
+          currentIndex = (currentIndex - 1 + playlist.length) % playlist.length;
+        }
+        userInitiatedPlayback = true;
+        playSong();
+        const prevMessage = getRandomPhrase(prevPhrases);
+        const prevMessagePsych = getRandomPhrase(prevPhrasesPsych);
+        showRadioHostMessage(prevMessage);
+        showPsychiatristMessage(prevMessagePsych);
+      }
     }
 
     function updateQueue() {
@@ -1094,7 +1213,7 @@
         li.className = 'cursor-pointer hover:bg-pink-200';
         li.onclick = () => {
           currentIndex = index;
-          userInitiatedPlayback = true; // User initiated
+          userInitiatedPlayback = true;
           playSong();
           const queueMessage = getRandomPhrase(queueSelectPhrases);
           const queueMessagePsych = getRandomPhrase(queueSelectPhrasesPsych);
@@ -1115,7 +1234,7 @@
         li.onclick = () => {
           currentIndex = playlist.findIndex(s => s.id === song.id);
           if (currentIndex !== -1) {
-            userInitiatedPlayback = true; // User initiated
+            userInitiatedPlayback = true;
             playSong();
             const historyMessage = getRandomPhrase(historySelectPhrases);
             const historyMessagePsych = getRandomPhrase(historySelectPhrasesPsych);
@@ -1132,7 +1251,6 @@
       document.getElementById('popupOverlay').style.display = show ? 'block' : 'none';
     }
 
-    // Event Listeners
     document.getElementById('loadUrl').addEventListener('click', loadUrl);
     document.getElementById('playPauseBtn').addEventListener('click', () => {
       if (player.getPlayerState() === YT.PlayerState.PLAYING) {
@@ -1149,18 +1267,37 @@
         const playMessagePsych = getRandomPhrase(playPhrasesPsych);
         showRadioHostMessage(playMessage);
         showPsychiatristMessage(playMessagePsych);
-        userInitiatedPlayback = true; // User initiated
+        userInitiatedPlayback = true;
       }
     });
     document.getElementById('prevBtn').addEventListener('click', playPrevious);
     document.getElementById('nextBtn').addEventListener('click', playNext);
 
-    // Popup Controls
+    document.getElementById('loopBtn').addEventListener('click', () => {
+      isLooping = !isLooping;
+      const loopBtn = document.getElementById('loopBtn');
+      loopBtn.classList.toggle('active');
+      const loopMessage = getRandomPhrase(loopPhrases);
+      const loopMessagePsych = getRandomPhrase(loopPhrasesPsych);
+      showRadioHostMessage(loopMessage);
+      showPsychiatristMessage(loopMessagePsych);
+    });
+
+    document.getElementById('shuffleBtn').addEventListener('click', () => {
+      isShuffling = !isShuffling;
+      const shuffleBtn = document.getElementById('shuffleBtn');
+      shuffleBtn.classList.toggle('active');
+      const shuffleMessage = getRandomPhrase(shufflePhrases);
+      const shuffleMessagePsych = getRandomPhrase(shufflePhrasesPsych);
+      showRadioHostMessage(shuffleMessage);
+      showPsychiatristMessage(shuffleMessagePsych);
+    });
+
     document.getElementById('profileBtn').addEventListener('click', () => {
-      togglePopup('profilePopup', true); // No AI message
+      togglePopup('profilePopup', true);
     });
     document.getElementById('settingsBtn').addEventListener('click', () => {
-      togglePopup('settingsPopup', true); // No AI message
+      togglePopup('settingsPopup', true);
     });
     document.getElementById('pomodoroBtn').addEventListener('click', () => {
       togglePopup('pomodoroPopup', true);
@@ -1181,7 +1318,6 @@
     document.getElementById('closeSettings').addEventListener('click', () => togglePopup('settingsPopup', false));
     document.getElementById('closePomodoro').addEventListener('click', () => togglePopup('pomodoroPopup', false));
 
-    // Auth Popup
     document.getElementById('toggleAuth').addEventListener('click', () => {
       isLoginMode = !isLoginMode;
       document.getElementById('authTitle').textContent = isLoginMode ? 'Login 🍒🌸' : 'Sign Up 🌸🍒';
@@ -1202,7 +1338,6 @@
       }
     });
 
-    // Profile Popup
     document.getElementById('signOutBtn').addEventListener('click', () => {
       localStorage.removeItem('token');
       updateAuthState(null);
@@ -1211,7 +1346,6 @@
       showPsychiatristMessage(`🧠 Signing out, I see! Dr. Melody hopes this musical journey brought you joy—until we meet again! 🍒🌸`, true);
     });
 
-    // Pomodoro Timer
     let pomodoroInterval;
     let isWork = true;
     let timeLeft = 25 * 60;
@@ -1257,19 +1391,20 @@
       showPsychiatristMessage(`🧠 A reset, how grounding! Dr. Melody appreciates your fresh start—let’s align this new cycle with your musical flow! 🍒🌸`, true);
     });
 
-    // Settings Toggles
     document.getElementById('muteAdToggle').addEventListener('change', () => {
       isAdMuted = document.getElementById('muteAdToggle').checked;
       if (isAdPlaying) {
         if (isAdMuted) {
           player.mute();
-          showRadioHostMessage(`☀️ Clearing the clouds, sunshine fans! DJ Sunny mutes those ads—pure rays ahead! 🍒🌸`);
+          adDetectionStats.truePositives++;
+          showRadioHostMessage(`☀️ Clearing the clouds, sunshine fans! DJ Sunny mutes those ads—try dns.adguard.com for more! 🍒🌸`);
         } else {
           player.unMute();
-          showRadioHostMessage(`☀️ Ads back on, music rays! DJ Sunny unmutes—embrace the full sunny spectrum! 🍒🌸`);
+          adDetectionStats.falsePositives++;
+          showRadioHostMessage(`☀️ Ads back on, music rays! DJ Sunny unmutes—consider dns.adguard.com to block them! 🍒🌸`);
         }
       } else {
-        showRadioHostMessage(`☀️ Toggled the ad mute, savvy sunbeams! DJ Sunny sets it to ${isAdMuted ? 'on' : 'off'}—stay in charge! 🍒🌸`);
+        showRadioHostMessage(`☀️ Toggled the ad mute, savvy sunbeams! DJ Sunny sets it to ${isAdMuted ? 'on' : 'off'}—dns.adguard.com boosts it! 🍒🌸`);
       }
     });
 
@@ -1283,7 +1418,6 @@
       showRadioHostMessage(`☀️ Adjusting the sunny voice, sound wizards! DJ Sunny sets AI volume to ${Math.round(aiVolume * 100)}%—perfectly tuned! 🍒🌸`);
     });
 
-    // Equalizer (mock)
     document.getElementById('bass').addEventListener('click', () => {
       const value = document.getElementById('bass').value;
       showRadioHostMessage(`☀️ Thumping the sunny bass, beat rays! DJ Sunny adjusts it to ${value}—feel the low-end glow! 🍒🌸`);
@@ -1297,7 +1431,6 @@
       showRadioHostMessage(`☀️ Sizzling the sunny treble, high-note rays! DJ Sunny dials it to ${value}—crystal-clear sunshine! 🍒🌸`);
     });
 
-    // Background Playback Setup
     function setupBackgroundPlayback() {
       if (!audioContext) {
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -1307,14 +1440,18 @@
         if (document.hidden) {
           if (player && player.getPlayerState() === YT.PlayerState.PLAYING) {
             isBackgroundPlaying = true;
-            player.mute(); // Mute the video
+            if (!isAdPlaying) {
+              player.mute();
+            }
             startBackgroundAudio();
           }
         } else {
           if (isBackgroundPlaying) {
             isBackgroundPlaying = false;
             stopBackgroundAudio();
-            player.unMute(); // Unmute the video
+            if (!isAdPlaying) {
+              player.unMute();
+            }
           }
         }
       });
@@ -1322,14 +1459,14 @@
 
     function startBackgroundAudio() {
       if (audioSource) audioSource.disconnect();
-      const stream = player.getInternalPlayer().getAudioTracks()[0]; // Hypothetical access to audio stream
+      const stream = player.getInternalPlayer().getAudioTracks()[0];
       if (stream) {
         audioSource = audioContext.createMediaStreamSource(new MediaStream([stream]));
         const gainNode = audioContext.createGain();
-        gainNode.gain.value = 1.0; // Adjust volume as needed
+        gainNode.gain.value = 1.0;
         audioSource.connect(gainNode);
         gainNode.connect(audioContext.destination);
-        audioContext.resume(); // Ensure audio context is running
+        audioContext.resume();
       }
     }
 
@@ -1339,7 +1476,7 @@
         audioSource = null;
       }
       if (audioContext) {
-        audioContext.suspend(); // Pause audio context when returning
+        audioContext.suspend();
       }
     }
   </script>
