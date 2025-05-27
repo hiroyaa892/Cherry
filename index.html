@@ -896,18 +896,17 @@
     async function isLikelyAd(videoId, duration, currentQuality) {
       const score = await calculateAdScore(videoId, duration, currentQuality);
       const threshold = 0; // 100% sensitivity: any score > 0 is an ad
-      return score > threshold;
+      return score > threshold || isAdInterrupting() !== -1;
     }
 
     function setupAdDetectionHook() {
       const videoElement = getVideoElement();
-      if (videoElement) {
+      if (videoElement && videoElement.onplay === null) {
         videoElement.onplay = function() {
           analVideo();
         };
       }
 
-      // Detect navigation events (similar to yt-navigate-finish in UserScript)
       document.body.addEventListener('yt-navigate-finish', function() {
         const videoElement = getVideoElement();
         if (videoElement && videoElement.onplay === null) {
@@ -919,35 +918,37 @@
     }
 
     function analVideo() {
-      const adInterruptStatus = isAdInterrupting();
-      if (adInterruptStatus !== -1 && !adHandled) {
-        adHandled = true;
-        playerMutedBefore = player.isMuted ? player.isMuted() : false;
-        if (isAdMuted) {
-          player.mute();
-          isAdPlaying = true;
-          adDetectionStats.total++;
-          adDetectionStats.truePositives++;
-          const randomAdPhrase = getRandomPhrase(adDetectedPhrases);
-          const randomAdPhrasePsych = getRandomPhrase(adDetectedPhrasesPsych);
-          showRadioHostMessage(randomAdPhrase);
-          showPsychiatristMessage(randomAdPhrasePsych);
-          startAdInteraction();
-        }
-      } else if (adInterruptStatus === -1 && adHandled) {
-        adHandled = false;
-        isAdPlaying = false;
-        if (isAdMuted) {
-          if (!playerMutedBefore) {
-            player.unMute();
-          } else {
+      if (player) {
+        const adInterruptStatus = isAdInterrupting();
+        if (adInterruptStatus !== -1 && !adHandled) {
+          adHandled = true;
+          playerMutedBefore = player.isMuted ? player.isMuted() : false;
+          if (isAdMuted) {
             player.mute();
+            isAdPlaying = true;
+            adDetectionStats.total++;
+            adDetectionStats.truePositives++;
+            const randomAdPhrase = getRandomPhrase(adDetectedPhrases);
+            const randomAdPhrasePsych = getRandomPhrase(adDetectedPhrasesPsych);
+            showRadioHostMessage(randomAdPhrase);
+            showPsychiatristMessage(randomAdPhrasePsych);
+            startAdInteraction();
           }
-          const randomAdEndPhrase = getRandomPhrase(adEndedPhrases);
-          const randomAdEndPhrasePsych = getRandomPhrase(adEndedPhrasesPsych);
-          showRadioHostMessage(randomAdEndPhrase);
-          showPsychiatristMessage(randomAdEndPhrasePsych);
-          stopAdInteraction();
+        } else if (adInterruptStatus === -1 && adHandled) {
+          adHandled = false;
+          isAdPlaying = false;
+          if (isAdMuted) {
+            if (!playerMutedBefore) {
+              player.unMute();
+            } else {
+              player.mute();
+            }
+            const randomAdEndPhrase = getRandomPhrase(adEndedPhrases);
+            const randomAdEndPhrasePsych = getRandomPhrase(adEndedPhrasesPsych);
+            showRadioHostMessage(randomAdEndPhrase);
+            showPsychiatristMessage(randomAdEndPhrasePsych);
+            stopAdInteraction();
+          }
         }
       }
     }
@@ -960,58 +961,37 @@
           const duration = player.getDuration();
           const currentQuality = player.getPlaybackQuality();
           
-          // Check DOM-based ad detection first
-          const adInterruptStatus = isAdInterrupting();
-          if (adInterruptStatus !== -1) {
-            if (!adHandled) {
-              adHandled = true;
-              playerMutedBefore = player.isMuted ? player.isMuted() : false;
-              if (isAdMuted) {
-                player.mute();
-                isAdPlaying = true;
-                adDetectionStats.total++;
-                adDetectionStats.truePositives++;
-                const randomAdPhrase = getRandomPhrase(adDetectedPhrases);
-                const randomAdPhrasePsych = getRandomPhrase(adDetectedPhrasesPsych);
-                showRadioHostMessage(randomAdPhrase);
-                showPsychiatristMessage(randomAdPhrasePsych);
-                startAdInteraction();
-              }
-            }
-          } else {
-            // Fallback to score-based detection
-            const isAd = await isLikelyAd(currentVideoId, duration, currentQuality);
-            console.log(`Ad Polling - VideoID: ${currentVideoId}, IsAd: ${isAd}, AdInterruptStatus: ${adInterruptStatus}`);
+          const isAd = await isLikelyAd(currentVideoId, duration, currentQuality);
+          console.log(`Ad Polling - VideoID: ${currentVideoId}, IsAd: ${isAd}, AdInterruptStatus: ${isAdInterrupting()}`);
 
-            if (isAd && !adHandled) {
-              adHandled = true;
-              playerMutedBefore = player.isMuted ? player.isMuted() : false;
-              if (isAdMuted) {
+          if (isAd && !adHandled) {
+            adHandled = true;
+            playerMutedBefore = player.isMuted ? player.isMuted() : false;
+            if (isAdMuted) {
+              player.mute();
+              isAdPlaying = true;
+              adDetectionStats.total++;
+              adDetectionStats.truePositives++;
+              const randomAdPhrase = getRandomPhrase(adDetectedPhrases);
+              const randomAdPhrasePsych = getRandomPhrase(adDetectedPhrasesPsych);
+              showRadioHostMessage(randomAdPhrase);
+              showPsychiatristMessage(randomAdPhrasePsych);
+              startAdInteraction();
+            }
+          } else if (!isAd && adHandled) {
+            adHandled = false;
+            isAdPlaying = false;
+            if (isAdMuted) {
+              if (!playerMutedBefore) {
+                player.unMute();
+              } else {
                 player.mute();
-                isAdPlaying = true;
-                adDetectionStats.total++;
-                adDetectionStats.truePositives++;
-                const randomAdPhrase = getRandomPhrase(adDetectedPhrases);
-                const randomAdPhrasePsych = getRandomPhrase(adDetectedPhrasesPsych);
-                showRadioHostMessage(randomAdPhrase);
-                showPsychiatristMessage(randomAdPhrasePsych);
-                startAdInteraction();
               }
-            } else if (!isAd && adHandled) {
-              adHandled = false;
-              isAdPlaying = false;
-              if (isAdMuted) {
-                if (!playerMutedBefore) {
-                  player.unMute();
-                } else {
-                  player.mute();
-                }
-                const randomAdEndPhrase = getRandomPhrase(adEndedPhrases);
-                const randomAdEndPhrasePsych = getRandomPhrase(adEndedPhrasesPsych);
-                showRadioHostMessage(randomAdEndPhrase);
-                showPsychiatristMessage(randomAdEndPhrasePsych);
-                stopAdInteraction();
-              }
+              const randomAdEndPhrase = getRandomPhrase(adEndedPhrases);
+              const randomAdEndPhrasePsych = getRandomPhrase(adEndedPhrasesPsych);
+              showRadioHostMessage(randomAdEndPhrase);
+              showPsychiatristMessage(randomAdEndPhrasePsych);
+              stopAdInteraction();
             }
           }
         }
@@ -1067,12 +1047,8 @@
       }
 
       const detectAd = async () => {
-        const adInterruptStatus = isAdInterrupting();
-        if (adInterruptStatus !== -1) {
-          return true;
-        }
         const isAd = await isLikelyAd(currentVideoId, duration, currentQuality);
-        console.log(`Ad Detection on State Change - VideoID: ${currentVideoId}, State: ${state}, IsAd: ${isAd}, AdInterruptStatus: ${adInterruptStatus}`);
+        console.log(`Ad Detection on State Change - VideoID: ${currentVideoId}, State: ${state}, IsAd: ${isAd}, AdInterruptStatus: ${isAdInterrupting()}`);
         return isAd;
       };
 
