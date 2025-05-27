@@ -275,7 +275,7 @@
 
     <!-- URL Input -->
     <div class="input-section">
-      <input id="urlInput" type="text" placeholder="YouTube Playlist/Video 🍒🌸" class="retro-border">
+      <input id="urlInput" type="text" placeholder="YouTube Playlist/Video URL 🍒🌸" class="retro-border">
       <button id="loadUrl" class="retro-button">Load 🍒🌸</button>
     </div>
 
@@ -305,10 +305,10 @@
   </div>
 
   <!-- DJ Sunny Radio Host Bubble (Bottom Right, Above Dr. Melody) -->
-  <div id="radioHostBubble" class="radio-host-bubble hidden">☀️ Hey there, sunshine squad! This is DJ Sunny, dropping the hottest tunes your way! Let’s light up the airwaves! It’s 12:49 PM WITA on Tuesday, May 27, 2025—perfect time for some music! What’s your vibe today? 🍒🌸</div>
+  <div id="radioHostBubble" class="radio-host-bubble hidden">☀️ Hey there, sunshine squad! This is DJ Sunny, dropping the hottest tunes your way! Let’s light up the airwaves! What’s your vibe today? 🍒🌸</div>
 
   <!-- Dr. Melody Psychiatrist Bubble (Bottom Right) -->
-  <div id="psychiatristBubble" class="psychiatrist-bubble hidden">🧠 Hello, dear listener! I’m Dr. Melody, your musical therapist. Let’s explore how these tunes resonate with your soul! A Tuesday afternoon can be full of possibilities—how are you feeling right now? 🍒🌸</div>
+  <div id="psychiatristBubble" class="psychiatrist-bubble hidden">🧠 Hello, dear listener! I’m Dr. Melody, your musical therapist. Let’s explore how these tunes resonate with your soul! How are you feeling right now? 🍒🌸</div>
 
   <!-- Popups -->
   <div id="authPopup" class="popup">
@@ -399,6 +399,9 @@
     let userInitiatedPlayback = false; // Track user interaction
     let lastInterruptTime = 0;
     let interruptInterval = null;
+    let audioContext = null;
+    let audioSource = null;
+    let isBackgroundPlaying = false;
     const AD_DURATION_THRESHOLD = 60; // Ads can be up to 60 seconds (e.g., skippable)
     const STATE_WINDOW_SIZE = 3; // Track last 3 states
     const TRANSITION_THRESHOLD = 5; // Seconds for frequent transitions
@@ -492,7 +495,7 @@
 
     const midSongInterruptPhrases = [
       `☀️ Hold up, sunshine squad! DJ Sunny here with a quick interrupt—this track’s got such a funky beat, doesn’t it? Let’s keep grooving—any requests for the next song? 🍒🌸`,
-      `☀️ Breaking in with some sunny vibes, folks! DJ Sunny’s loving this song’s chill lo-fi energy—perfect for a relaxed afternoon at 12:49 PM WITA on Tuesday, May 27, 2025! 🍒🌸`,
+      `☀️ Breaking in with some sunny vibes, folks! DJ Sunny’s loving this song’s chill lo-fi energy—perfect for a relaxed afternoon! 🍒🌸`,
       `☀️ Hey there, music rays! DJ Sunny popping in—this artist dropped this banger in 2023, and it’s got over 5M views! 🍒🌸`,
       `☀️ Quick sunny interruption, crew! DJ Sunny’s digging this track’s upbeat tempo—feels like a solid 130 BPM! 🍒🌸`,
       `☀️ Sunshine alert, listeners! DJ Sunny here—this song’s got a classic pop vibe, and I’m obsessed! 🍒🌸`
@@ -501,7 +504,7 @@
     const loadPlaylistPhrases = [
       `☀️ Rise and shine, tune travelers! DJ Sunny’s loading your playlist with sunny flair—let’s heat up the airwaves! 🍒🌸`,
       `☀️ Playlist loaded, sunshine crew! DJ Sunny’s ready to rock this set—looks like we’ve got some indie vibes in here! 🍒🌸`,
-      `☀️ Here we go, music rays! DJ Sunny’s got your playlist locked and loaded—perfect for a Tuesday afternoon at 12:49 PM WITA on Tuesday, May 27, 2025! 🍒🌸`,
+      `☀️ Here we go, music rays! DJ Sunny’s got your playlist locked and loaded—perfect for a great day! 🍒🌸`,
       `☀️ Your playlist is live, sunny fans! DJ Sunny’s spinning these tracks with love—looks like a 10-song list! 🍒🌸`
     ];
 
@@ -572,7 +575,7 @@
     const loadPlaylistPhrasesPsych = [
       `🧠 A playlist, how wonderful! Dr. Melody senses this selection might reflect your mood—let’s see how it resonates with your inner self! 🍒🌸`,
       `🧠 Playlist loaded, dear listener! Dr. Melody notices a mix of genres here—perhaps a sign of your diverse emotions today! 🍒🌸`,
-      `🧠 Your playlist is ready, I see! Dr. Melody feels the energy of these tracks—perfect for a Tuesday afternoon! 🍒🌸`,
+      `🧠 Your playlist is ready, I see! Dr. Melody feels the energy of these tracks—perfect for a great day! 🍒🌸`,
       `🧠 A thoughtful playlist choice! Dr. Melody senses this could be a journey of joy and reflection—let’s explore it together! 🍒🌸`
     ];
 
@@ -651,7 +654,7 @@
     function startMidSongInterruptions() {
       if (interruptInterval) clearInterval(interruptInterval);
       interruptInterval = setInterval(() => {
-        if (player && player.getPlayerState() === YT.PlayerState.PLAYING && !isAdPlaying) {
+        if (player && player.getPlayerState() === YT.PlayerState.PLAYING && !isAdPlaying && !document.hidden) {
           const currentTime = player.getCurrentTime();
           const timeSinceLastInterrupt = Date.now() - lastInterruptTime;
           if (currentTime > 30 && timeSinceLastInterrupt >= 30000) {
@@ -765,8 +768,8 @@
         }
       });
       // Show initial messages but don't play music yet
-      showRadioHostMessage('☀️ Hey there, sunshine squad! This is DJ Sunny, dropping the hottest tunes your way! Let’s light up the airwaves! It’s 12:49 PM WITA on Tuesday, May 27, 2025—perfect time for some music! What’s your vibe today? 🍒🌸', true)
-        .then(() => showPsychiatristMessage('🧠 Hello, dear listener! I’m Dr. Melody, your musical therapist. Let’s explore how these tunes resonate with your soul! A Tuesday afternoon can be full of possibilities—how are you feeling right now? 🍒🌸', true));
+      showRadioHostMessage('☀️ Hey there, sunshine squad! This is DJ Sunny, dropping the hottest tunes your way! Let’s light up the airwaves! What’s your vibe today? 🍒🌸', true)
+        .then(() => showPsychiatristMessage('🧠 Hello, dear listener! I’m Dr. Melody, your musical therapist. Let’s explore how these tunes resonate with your soul! How are you feeling right now? 🍒🌸', true));
     }
 
     function onPlayerReady(event) {
@@ -780,6 +783,7 @@
         player.mute();
       }
       startMidSongInterruptions();
+      setupBackgroundPlayback();
     }
 
     function onPlaybackQualityChange(event) {
@@ -925,75 +929,121 @@
       return `${min}:${sec < 10 ? '0' : ''}${sec}`;
     }
 
+    // Enhanced loadUrl function to handle various YouTube URL formats
     async function loadUrl() {
-      const url = document.getElementById('urlInput').value;
-      const playlistId = url.match(/list=([a-zA-Z0-9_-]+)/)?.[1];
-      console.log('Loading URL:', url, 'Playlist ID:', playlistId);
+      let url = document.getElementById('urlInput').value.trim();
+      if (!url) {
+        alert('Please enter a YouTube URL.');
+        return;
+      }
+
+      // Normalize URL: ensure it starts with https:// and remove extra spaces
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        url = 'https://' + url;
+      }
+
+      // Parse the URL to extract video or playlist IDs
+      let videoId = null;
+      let playlistId = null;
+
+      // Regular expressions for different YouTube URL formats
+      const videoRegex = [
+        /(?:v=)([a-zA-Z0-9_-]{11})/, // Standard YouTube URL: v=VIDEO_ID
+        /youtu\.be\/([a-zA-Z0-9_-]{11})/, // Shortened youtu.be/VIDEO_ID
+        /embed\/([a-zA-Z0-9_-]{11})/, // Embedded URL: embed/VIDEO_ID
+        /watch\?v=([a-zA-Z0-9_-]{11})/ // Watch URL with parameters
+      ];
+
+      const playlistRegex = /(?:list=)([a-zA-Z0-9_-]+)/; // Playlist URL: list=PLAYLIST_ID
+
+      // Check for playlist ID
+      const playlistMatch = url.match(playlistRegex);
+      if (playlistMatch) {
+        playlistId = playlistMatch[1];
+      }
+
+      // Check for video ID across different URL formats
+      for (const regex of videoRegex) {
+        const match = url.match(regex);
+        if (match) {
+          videoId = match[1];
+          break;
+        }
+      }
+
+      console.log('Parsed URL:', { videoId, playlistId });
+
+      // Handle playlist loading
       if (playlistId) {
         try {
           const response = await fetch(`https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50&playlistId=${playlistId}&key=${API_KEY}`);
           console.log('Playlist response status:', response.status);
           const data = await response.json();
           console.log('Playlist data:', data);
-          playlist = data.items.map(item => ({
-            id: item.snippet.resourceId.videoId,
-            title: item.snippet.title
-          }));
-          updateQueue();
-          if (playlist.length > 0) {
-            currentIndex = 0;
-            userInitiatedPlayback = true; // User initiated
-            const loadPlaylistMessage = getRandomPhrase(loadPlaylistPhrases);
-            const loadPlaylistMessagePsych = getRandomPhrase(loadPlaylistPhrasesPsych);
-            // Wait for both messages to finish speaking before playing
-            await showRadioHostMessage(loadPlaylistMessage, true);
-            await showPsychiatristMessage(loadPlaylistMessagePsych, true);
-            playSong();
+          if (data.items && data.items.length > 0) {
+            playlist = data.items.map(item => ({
+              id: item.snippet.resourceId.videoId,
+              title: item.snippet.title
+            }));
+            updateQueue();
+            if (playlist.length > 0) {
+              currentIndex = 0;
+              userInitiatedPlayback = true; // User initiated
+              const loadPlaylistMessage = getRandomPhrase(loadPlaylistPhrases);
+              const loadPlaylistMessagePsych = getRandomPhrase(loadPlaylistPhrasesPsych);
+              // Wait for both messages to finish speaking before playing
+              await showRadioHostMessage(loadPlaylistMessage, true);
+              await showPsychiatristMessage(loadPlaylistMessagePsych, true);
+              playSong();
+            } else {
+              console.error('No items found in playlist');
+              alert('No items found in the playlist. Please check the URL.');
+            }
           } else {
-            console.error('No items found in playlist');
-            alert('No items found in the playlist. Please check the URL.');
+            console.error('Invalid playlist data');
+            alert('Invalid playlist URL or no videos found.');
           }
         } catch (err) {
           console.error('Error loading playlist:', err);
           alert('Error loading playlist. Please check the URL or API key.');
         }
-      } else {
-        const videoId = url.match(/(?:v=)([a-zA-Z0-9_-]+)/)?.[1];
-        console.log('Loading video ID:', videoId);
-        if (videoId) {
-          try {
-            const response = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${videoId}&key=${API_KEY}`);
-            console.log('Video response status:', response.status);
-            const data = await response.json();
-            console.log('Video data:', data);
-            if (data.items.length > 0) {
-              playlist.push({
-                id: videoId,
-                title: data.items[0].snippet.title
-              });
-              updateQueue();
-              if (currentIndex === -1) {
-                currentIndex = 0;
-                userInitiatedPlayback = true; // User initiated
-                const loadVideoMessage = getRandomPhrase(loadVideoPhrases);
-                const loadVideoMessagePsych = getRandomPhrase(loadVideoPhrasesPsych);
-                // Wait for both messages to finish speaking before playing
-                await showRadioHostMessage(loadVideoMessage, true);
-                await showPsychiatristMessage(loadVideoMessagePsych, true);
-                playSong();
-              }
-            } else {
-              console.error('Invalid video data');
-              alert('Invalid video URL');
+      }
+      // Handle single video loading
+      else if (videoId) {
+        try {
+          const response = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${videoId}&key=${API_KEY}`);
+          console.log('Video response status:', response.status);
+          const data = await response.json();
+          console.log('Video data:', data);
+          if (data.items && data.items.length > 0) {
+            playlist.push({
+              id: videoId,
+              title: data.items[0].snippet.title
+            });
+            updateQueue();
+            if (currentIndex === -1) {
+              currentIndex = 0;
+              userInitiatedPlayback = true; // User initiated
+              const loadVideoMessage = getRandomPhrase(loadVideoPhrases);
+              const loadVideoMessagePsych = getRandomPhrase(loadVideoPhrasesPsych);
+              // Wait for both messages to finish speaking before playing
+              await showRadioHostMessage(loadVideoMessage, true);
+              await showPsychiatristMessage(loadVideoMessagePsych, true);
+              playSong();
             }
-          } catch (err) {
-            console.error('Error loading video:', err);
-            alert('Error loading video. Please check the URL or API key.');
+          } else {
+            console.error('Invalid video data');
+            alert('Invalid video URL');
           }
-        } else {
-          console.error('Invalid URL format');
-          alert('Invalid URL');
+        } catch (err) {
+          console.error('Error loading video:', err);
+          alert('Error loading video. Please check the URL or API key.');
         }
+      }
+      // Invalid URL
+      else {
+        console.error('Invalid URL format');
+        alert('Invalid YouTube URL. Please provide a valid video or playlist URL.');
       }
     }
 
@@ -1107,10 +1157,10 @@
 
     // Popup Controls
     document.getElementById('profileBtn').addEventListener('click', () => {
-      togglePopup('profilePopup', true);
+      togglePopup('profilePopup', true); // No AI message
     });
     document.getElementById('settingsBtn').addEventListener('click', () => {
-      togglePopup('settingsPopup', true);
+      togglePopup('settingsPopup', true); // No AI message
     });
     document.getElementById('pomodoroBtn').addEventListener('click', () => {
       togglePopup('pomodoroPopup', true);
@@ -1246,6 +1296,52 @@
       const value = document.getElementById('treble').value;
       showRadioHostMessage(`☀️ Sizzling the sunny treble, high-note rays! DJ Sunny dials it to ${value}—crystal-clear sunshine! 🍒🌸`);
     });
+
+    // Background Playback Setup
+    function setupBackgroundPlayback() {
+      if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      }
+
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+          if (player && player.getPlayerState() === YT.PlayerState.PLAYING) {
+            isBackgroundPlaying = true;
+            player.mute(); // Mute the video
+            startBackgroundAudio();
+          }
+        } else {
+          if (isBackgroundPlaying) {
+            isBackgroundPlaying = false;
+            stopBackgroundAudio();
+            player.unMute(); // Unmute the video
+          }
+        }
+      });
+    }
+
+    function startBackgroundAudio() {
+      if (audioSource) audioSource.disconnect();
+      const stream = player.getInternalPlayer().getAudioTracks()[0]; // Hypothetical access to audio stream
+      if (stream) {
+        audioSource = audioContext.createMediaStreamSource(new MediaStream([stream]));
+        const gainNode = audioContext.createGain();
+        gainNode.gain.value = 1.0; // Adjust volume as needed
+        audioSource.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        audioContext.resume(); // Ensure audio context is running
+      }
+    }
+
+    function stopBackgroundAudio() {
+      if (audioSource) {
+        audioSource.disconnect();
+        audioSource = null;
+      }
+      if (audioContext) {
+        audioContext.suspend(); // Pause audio context when returning
+      }
+    }
   </script>
 </body>
 </html>
