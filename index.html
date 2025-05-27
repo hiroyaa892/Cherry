@@ -352,8 +352,6 @@
       <label class="text-xs mr-3">AI Volume 🍒🌸</label>
       <input type="range" id="aiVolume" min="0" max="1" step="0.1" value="1" class="w-full">
     </div>
-    <h3 class="font-bold mb-3">Ad Blocking 🍒🌸</h3>
-    <p class="text-xs mb-3">For enhanced ad blocking, set your DNS to <a href="https://dns.adguard.com/" target="_blank" style="color: #c94b4b; text-decoration: underline;">dns.adguard.com</a> in your router or device settings. 🍒🌸</p>
     <h3 class="font-bold mb-3">Equalizer 🍒🌸</h3>
     <div class="flex space-x-3 mb-3">
       <div>
@@ -412,15 +410,16 @@
     let isBackgroundPlaying = false;
     let adCheckInterval = null;
     let adInteractionInterval = null;
+    let adHandled = false;
+    let playerMutedBefore = false;
     const AD_DURATION_THRESHOLD = 120;
     const STATE_WINDOW_SIZE = 3;
     const TRANSITION_THRESHOLD = 5;
     const AD_CHECK_INTERVAL = 5000;
-    const INTERACTION_INTERVAL = 5000; // 5 seconds between AI interactions
+    const INTERACTION_INTERVAL = 5000;
 
     const API_KEY = 'AIzaSyBitewTBcoYxggjLlqbMm1qWhFatR6kvP8';
 
-    // Expanded ad patterns with more keywords
     const adPatterns = {
       title: /(sponsored|ad|promo|advertisement|commercial|trailer|teaser|presented by|brand|campaign|partner)/i,
       channel: /(google ads|doubleclick|admob|advertiser|marketing|promotions|sponsor|brand|official ad)/i,
@@ -429,7 +428,7 @@
     };
 
     let videoMetadataCache = {};
-    let adDetectionStats = { truePositives: 0, falsePositives: 0, total: 0 }; // For AI learning
+    let adDetectionStats = { truePositives: 0, falsePositives: 0, total: 0 };
     const radioHostBubble = document.getElementById('radioHostBubble');
     const psychiatristBubble = document.getElementById('psychiatristBubble');
     const loginSignupBtn = document.getElementById('loginSignupBtn');
@@ -491,15 +490,16 @@
       });
     }
 
+    // Updated phrases without dns.adguard.com
     const adDetectedPhrases = [
-      `☀️ Ad spotted with confidence, sunshine squad! DJ Sunny mutes this cloud—try dns.adguard.com for even better blocking! 🍒🌸`,
-      `☀️ High-probability ad alert, music rays! DJ Sunny’s silencing it—switch to dns.adguard.com for ad-free vibes! 🍒🌸`,
-      `☀️ My ad sensors are buzzing, crew! DJ Sunny mutes this commercial—dns.adguard.com can zap ads entirely! 🍒🌸`,
-      `☀️ Confirmed ad incoming, fans! DJ Sunny mutes it—use dns.adguard.com to stop ads at the source! 🍒🌸`,
-      `☀️ Ad detection at peak, sunshine crew! DJ Sunny slams the mute—dns.adguard.com can block it entirely! 🍒🌸`,
-      `☀️ Ad invasion confirmed! DJ Sunny mutes it quick—check out dns.adguard.com for a cleaner listen! 🍒🌸`,
-      `☀️ My AI says this is an ad, sunbeams! DJ Sunny mutes it—dns.adguard.com could zap these ads away! 🍒🌸`,
-      `☀️ Ad flagged with precision, music lovers! DJ Sunny mutes it fast—set your DNS to dns.adguard.com for pure tunes! 🍒🌸`
+      `☀️ Ad spotted with 100% certainty, sunshine squad! DJ Sunny mutes this cloud—enjoy pure music! 🍒🌸`,
+      `☀️ Absolute ad alert, music rays! DJ Sunny silences it—no interruptions for you! 🍒🌸`,
+      `☀️ My ad sensors are locked on, crew! DJ Sunny mutes this commercial—pure vibes ahead! 🍒🌸`,
+      `☀️ Confirmed ad incoming, fans! DJ Sunny mutes it—nothing but sunny tunes now! 🍒🌸`,
+      `☀️ Ad detection at maximum, sunshine crew! DJ Sunny slams the mute—smooth listening guaranteed! 🍒🌸`,
+      `☀️ Ad invasion confirmed! DJ Sunny mutes it quick—back to the music you love! 🍒🌸`,
+      `☀️ My AI says this is definitely an ad, sunbeams! DJ Sunny mutes it—no distractions here! 🍒🌸`,
+      `☀️ Ad flagged with total precision, music lovers! DJ Sunny mutes it fast—enjoy the rhythm! 🍒🌸`
     ];
 
     const adEndedPhrases = [
@@ -571,14 +571,14 @@
     ];
 
     const adDetectedPhrasesPsych = [
-      `🧠 My analysis confirms an ad, dear listener! Dr. Melody silences it—try dns.adguard.com for a smoother experience! 🍒🌸`,
-      `🧠 I’m certain this is an ad! Dr. Melody mutes it—dns.adguard.com can block ads at the source! 🍒🌸`,
-      `🧠 Ad detected with precision! Dr. Melody mutes it—dns.adguard.com can enhance your listening peace! 🍒🌸`,
-      `🧠 An ad, confirmed by my insights! Dr. Melody mutes it—set your DNS to dns.adguard.com for ad-free therapy! 🍒🌸`,
-      `🧠 My diagnostics spot an ad! Dr. Melody mutes it swiftly—dns.adguard.com could prevent these interruptions! 🍒🌸`,
-      `🧠 Ad flagged by my analysis! Dr. Melody silences it—explore dns.adguard.com for a cleaner journey! 🍒🌸`,
-      `🧠 High-likelihood ad detected! Dr. Melody mutes it—dns.adguard.com might maintain your focus on healing tunes! 🍒🌸`,
-      `🧠 A commercial break, analytically confirmed! Dr. Melody mutes it—consider dns.adguard.com for a serene vibe! 🍒🌸`
+      `🧠 My analysis confirms an ad with 100% certainty, dear listener! Dr. Melody silences it—pure music awaits! 🍒🌸`,
+      `🧠 I’m absolutely certain this is an ad! Dr. Melody mutes it—focus on the melody ahead! 🍒🌸`,
+      `🧠 Ad detected with total precision! Dr. Melody mutes it—enjoy an uninterrupted journey! 🍒🌸`,
+      `🧠 An ad, confirmed beyond doubt! Dr. Melody mutes it—let the music heal without distractions! 🍒🌸`,
+      `🧠 My diagnostics spot an ad with certainty! Dr. Melody mutes it swiftly—smooth vibes only! 🍒🌸`,
+      `🧠 Ad flagged by my precise analysis! Dr. Melody silences it—back to your musical escape! 🍒🌸`,
+      `🧠 High-likelihood ad confirmed! Dr. Melody mutes it—no interruptions in your therapy! 🍒🌸`,
+      `🧠 A commercial break, analytically confirmed! Dr. Melody mutes it—immerse in the music! 🍒🌸`
     ];
 
     const adEndedPhrasesPsych = [
@@ -766,6 +766,23 @@
 
     checkAuthOnLoad();
 
+    // UserScript-inspired functions for DOM-based ad detection
+    function getVideoElement() {
+      return document.getElementsByClassName("video-stream html5-main-video")[0];
+    }
+
+    function getPlayerElement() {
+      return document.getElementsByClassName("html5-video-player")[0];
+    }
+
+    function isAdInterrupting() {
+      const playerElement = getPlayerElement();
+      if (playerElement) {
+        return playerElement.className.includes("ad-interrupting") ? 1 : -1;
+      }
+      return -1;
+    }
+
     function onYouTubeIframeAPIReady() {
       console.log('YouTube IFrame API Ready');
       player = new YT.Player('player', {
@@ -794,6 +811,7 @@
       startMidSongInterruptions();
       setupBackgroundPlayback();
       startAdDetectionPolling();
+      setupAdDetectionHook();
     }
 
     function onPlaybackQualityChange(event) {
@@ -835,25 +853,21 @@
       const metadata = await fetchVideoMetadata(videoId);
       let score = 0;
 
-      // 1. Metadata-based scoring
       if (metadata) {
         const { title, channel, description } = metadata;
-        if (adPatterns.title.test(title)) score += 0.4; // High confidence
+        if (adPatterns.title.test(title)) score += 0.4;
         if (adPatterns.channel.test(channel)) score += 0.3;
         if (adPatterns.description.test(description)) score += 0.3;
 
-        // Check for suspicious publication dates (e.g., very recent for ads)
         const publishedDate = new Date(metadata.publishedAt);
         const now = new Date();
         const ageInDays = (now - publishedDate) / (1000 * 60 * 60 * 24);
-        if (ageInDays < 7) score += 0.1; // Recent videos might be promotional
+        if (ageInDays < 7) score += 0.1;
       }
 
-      // 2. Duration-based scoring
       const isShortVideo = duration > 0 && duration <= AD_DURATION_THRESHOLD;
       if (isShortVideo) score += 0.3;
 
-      // 3. Playback behavior scoring
       const isFrequentTransition = stateHistory.length >= 2 && 
         (stateHistory[stateHistory.length - 1].time - stateHistory[stateHistory.length - 2].time) / 1000 < TRANSITION_THRESHOLD;
       if (isFrequentTransition) score += 0.2;
@@ -862,19 +876,16 @@
         stateHistory.some(s => s.state === YT.PlayerState.PLAYING);
       if (isAdLikeTransition) score += 0.15;
 
-      // 4. Quality change scoring
       const qualityLevels = ['tiny', 'small', 'medium', 'large', 'hd720', 'hd1080', 'highres'];
       const currentQualityIndex = qualityLevels.indexOf(currentQuality);
       const lastQualityIndex = qualityLevels.indexOf(lastPlaybackQuality);
       const isQualityDrop = lastQualityIndex > -1 && currentQualityIndex > -1 && currentQualityIndex < lastQualityIndex;
-      if (isQualityDrop) score += 0.15; // Ads often use lower quality
+      if (isQualityDrop) score += 0.15;
 
-      // 5. Unexpected video scoring
       const expectedVideoId = currentIndex >= 0 && currentIndex < playlist.length ? playlist[currentIndex].id : null;
       const isUnexpectedVideo = videoId !== expectedVideoId && expectedVideoId !== null;
       if (isUnexpectedVideo) score += 0.25;
 
-      // 6. Auto-play detection
       if (!userInitiatedPlayback) score += 0.1;
 
       console.log(`Ad Score for videoId ${videoId}: ${score.toFixed(2)} - Metadata: ${JSON.stringify(metadata)}, Duration: ${duration}s, FrequentTransition: ${isFrequentTransition}, AdLikeTransition: ${isAdLikeTransition}, QualityDrop: ${isQualityDrop}, UnexpectedVideo: ${isUnexpectedVideo}, AutoPlay: ${!userInitiatedPlayback}`);
@@ -884,8 +895,61 @@
 
     async function isLikelyAd(videoId, duration, currentQuality) {
       const score = await calculateAdScore(videoId, duration, currentQuality);
-      const threshold = 0.5; // Adjustable threshold
-      return score >= threshold;
+      const threshold = 0; // 100% sensitivity: any score > 0 is an ad
+      return score > threshold;
+    }
+
+    function setupAdDetectionHook() {
+      const videoElement = getVideoElement();
+      if (videoElement) {
+        videoElement.onplay = function() {
+          analVideo();
+        };
+      }
+
+      // Detect navigation events (similar to yt-navigate-finish in UserScript)
+      document.body.addEventListener('yt-navigate-finish', function() {
+        const videoElement = getVideoElement();
+        if (videoElement && videoElement.onplay === null) {
+          videoElement.onplay = function() {
+            analVideo();
+          };
+        }
+      });
+    }
+
+    function analVideo() {
+      const adInterruptStatus = isAdInterrupting();
+      if (adInterruptStatus !== -1 && !adHandled) {
+        adHandled = true;
+        playerMutedBefore = player.isMuted ? player.isMuted() : false;
+        if (isAdMuted) {
+          player.mute();
+          isAdPlaying = true;
+          adDetectionStats.total++;
+          adDetectionStats.truePositives++;
+          const randomAdPhrase = getRandomPhrase(adDetectedPhrases);
+          const randomAdPhrasePsych = getRandomPhrase(adDetectedPhrasesPsych);
+          showRadioHostMessage(randomAdPhrase);
+          showPsychiatristMessage(randomAdPhrasePsych);
+          startAdInteraction();
+        }
+      } else if (adInterruptStatus === -1 && adHandled) {
+        adHandled = false;
+        isAdPlaying = false;
+        if (isAdMuted) {
+          if (!playerMutedBefore) {
+            player.unMute();
+          } else {
+            player.mute();
+          }
+          const randomAdEndPhrase = getRandomPhrase(adEndedPhrases);
+          const randomAdEndPhrasePsych = getRandomPhrase(adEndedPhrasesPsych);
+          showRadioHostMessage(randomAdEndPhrase);
+          showPsychiatristMessage(randomAdEndPhrasePsych);
+          stopAdInteraction();
+        }
+      }
     }
 
     function startAdDetectionPolling() {
@@ -895,18 +959,18 @@
           const currentVideoId = player.getVideoData()['video_id'];
           const duration = player.getDuration();
           const currentQuality = player.getPlaybackQuality();
-          const isAd = await isLikelyAd(currentVideoId, duration, currentQuality);
-
-          console.log(`Ad Polling - VideoID: ${currentVideoId}, IsAd: ${isAd}`);
-
-          if (isAd) {
-            if (!isAdPlaying) {
-              isAdPlaying = true;
-              lastVideoId = currentVideoId;
-              adDetectionStats.total++;
-              adDetectionStats.truePositives++;
+          
+          // Check DOM-based ad detection first
+          const adInterruptStatus = isAdInterrupting();
+          if (adInterruptStatus !== -1) {
+            if (!adHandled) {
+              adHandled = true;
+              playerMutedBefore = player.isMuted ? player.isMuted() : false;
               if (isAdMuted) {
                 player.mute();
+                isAdPlaying = true;
+                adDetectionStats.total++;
+                adDetectionStats.truePositives++;
                 const randomAdPhrase = getRandomPhrase(adDetectedPhrases);
                 const randomAdPhrasePsych = getRandomPhrase(adDetectedPhrasesPsych);
                 showRadioHostMessage(randomAdPhrase);
@@ -915,11 +979,33 @@
               }
             }
           } else {
-            if (isAdPlaying) {
-              isAdPlaying = false;
-              lastVideoId = currentVideoId;
+            // Fallback to score-based detection
+            const isAd = await isLikelyAd(currentVideoId, duration, currentQuality);
+            console.log(`Ad Polling - VideoID: ${currentVideoId}, IsAd: ${isAd}, AdInterruptStatus: ${adInterruptStatus}`);
+
+            if (isAd && !adHandled) {
+              adHandled = true;
+              playerMutedBefore = player.isMuted ? player.isMuted() : false;
               if (isAdMuted) {
-                player.unMute();
+                player.mute();
+                isAdPlaying = true;
+                adDetectionStats.total++;
+                adDetectionStats.truePositives++;
+                const randomAdPhrase = getRandomPhrase(adDetectedPhrases);
+                const randomAdPhrasePsych = getRandomPhrase(adDetectedPhrasesPsych);
+                showRadioHostMessage(randomAdPhrase);
+                showPsychiatristMessage(randomAdPhrasePsych);
+                startAdInteraction();
+              }
+            } else if (!isAd && adHandled) {
+              adHandled = false;
+              isAdPlaying = false;
+              if (isAdMuted) {
+                if (!playerMutedBefore) {
+                  player.unMute();
+                } else {
+                  player.mute();
+                }
                 const randomAdEndPhrase = getRandomPhrase(adEndedPhrases);
                 const randomAdEndPhrasePsych = getRandomPhrase(adEndedPhrasesPsych);
                 showRadioHostMessage(randomAdEndPhrase);
@@ -939,18 +1025,18 @@
         if (isAdPlaying) {
           if (isSunnyTurn) {
             const sunnyPhrases = [
-              `☀️ Hey Dr. Melody, my ad score’s off the charts—muted this one! Try dns.adguard.com! 🍒🌸`,
-              `☀️ Yo, Doc! My AI’s certain this is an ad—muted it! Use dns.adguard.com! 🍒🌸`,
-              `☀️ Dr. Melody, my detection’s sharp—ad muted! dns.adguard.com could help! 🍒🌸`,
-              `☀️ Doc, my ad sensors are spot on—muted! Set DNS to dns.adguard.com! 🍒🌸`
+              `☀️ Hey Dr. Melody, my ad detection’s 100% on point—muted this one! Pure tunes now! 🍒🌸`,
+              `☀️ Yo, Doc! My AI’s absolutely certain this is an ad—muted it! Smooth vibes ahead! 🍒🌸`,
+              `☀️ Dr. Melody, my detection’s razor-sharp—ad muted! Nothing but music now! 🍒🌸`,
+              `☀️ Doc, my ad sensors are locked in—muted! Let’s keep the sunny beats rolling! 🍒🌸`
             ];
             await showRadioHostMessage(getRandomPhrase(sunnyPhrases));
           } else {
             const melodyPhrases = [
-              `🧠 DJ Sunny, my analysis agrees—an ad indeed! Let’s reflect during this silence—try dns.adguard.com! 🍒🌸`,
-              `🧠 Sunny, my diagnostics confirm your detection—well muted! Use dns.adguard.com! 🍒🌸`,
-              `🧠 Sunny, I concur with your ad score—great muting! dns.adguard.com could help! 🍒🌸`,
-              `🧠 DJ Sunny, our combined AI nailed it—ad muted! Set DNS to dns.adguard.com! 🍒🌸`
+              `🧠 DJ Sunny, my analysis confirms—an ad indeed! Let’s enjoy this silence before the music returns! 🍒🌸`,
+              `🧠 Sunny, my diagnostics agree—perfectly muted! The melody will resume shortly! 🍒🌸`,
+              `🧠 Sunny, I concur with your detection—well muted! Let’s prepare for the next song! 🍒🌸`,
+              `🧠 DJ Sunny, our combined AI nailed it—ad muted! The music’s coming back soon! 🍒🌸`
             ];
             await showPsychiatristMessage(getRandomPhrase(melodyPhrases));
           }
@@ -981,37 +1067,45 @@
       }
 
       const detectAd = async () => {
+        const adInterruptStatus = isAdInterrupting();
+        if (adInterruptStatus !== -1) {
+          return true;
+        }
         const isAd = await isLikelyAd(currentVideoId, duration, currentQuality);
-        console.log(`Ad Detection on State Change - VideoID: ${currentVideoId}, State: ${state}, IsAd: ${isAd}`);
-
+        console.log(`Ad Detection on State Change - VideoID: ${currentVideoId}, State: ${state}, IsAd: ${isAd}, AdInterruptStatus: ${adInterruptStatus}`);
         return isAd;
       };
 
       detectAd().then(isAd => {
         if (currentVideoId !== lastVideoId) {
           if (isAd) {
-            isAdPlaying = true;
-            adDetectionStats.total++;
-            adDetectionStats.truePositives++;
+            adHandled = true;
+            playerMutedBefore = player.isMuted ? player.isMuted() : false;
             if (isAdMuted) {
               player.mute();
+              isAdPlaying = true;
+              adDetectionStats.total++;
+              adDetectionStats.truePositives++;
               const randomAdPhrase = getRandomPhrase(adDetectedPhrases);
               const randomAdPhrasePsych = getRandomPhrase(adDetectedPhrasesPsych);
               showRadioHostMessage(randomAdPhrase);
               showPsychiatristMessage(randomAdPhrasePsych);
               startAdInteraction();
             }
-          } else {
-            if (isAdPlaying) {
-              isAdPlaying = false;
-              if (isAdMuted) {
+          } else if (!isAd && adHandled) {
+            adHandled = false;
+            isAdPlaying = false;
+            if (isAdMuted) {
+              if (!playerMutedBefore) {
                 player.unMute();
-                const randomAdEndPhrase = getRandomPhrase(adEndedPhrases);
-                const randomAdEndPhrasePsych = getRandomPhrase(adEndedPhrasesPsych);
-                showRadioHostMessage(randomAdEndPhrase);
-                showPsychiatristMessage(randomAdEndPhrasePsych);
-                stopAdInteraction();
+              } else {
+                player.mute();
               }
+              const randomAdEndPhrase = getRandomPhrase(adEndedPhrases);
+              const randomAdEndPhrasePsych = getRandomPhrase(adEndedPhrasesPsych);
+              showRadioHostMessage(randomAdEndPhrase);
+              showPsychiatristMessage(randomAdEndPhrasePsych);
+              stopAdInteraction();
             }
           }
           lastVideoId = currentVideoId;
@@ -1397,14 +1491,14 @@
         if (isAdMuted) {
           player.mute();
           adDetectionStats.truePositives++;
-          showRadioHostMessage(`☀️ Clearing the clouds, sunshine fans! DJ Sunny mutes those ads—try dns.adguard.com for more! 🍒🌸`);
+          showRadioHostMessage(`☀️ Clearing the clouds, sunshine fans! DJ Sunny mutes those ads—pure music now! 🍒🌸`);
         } else {
           player.unMute();
           adDetectionStats.falsePositives++;
-          showRadioHostMessage(`☀️ Ads back on, music rays! DJ Sunny unmutes—consider dns.adguard.com to block them! 🍒🌸`);
+          showRadioHostMessage(`☀️ Ads back on, music rays! DJ Sunny unmutes—enjoy with caution! 🍒🌸`);
         }
       } else {
-        showRadioHostMessage(`☀️ Toggled the ad mute, savvy sunbeams! DJ Sunny sets it to ${isAdMuted ? 'on' : 'off'}—dns.adguard.com boosts it! 🍒🌸`);
+        showRadioHostMessage(`☀️ Toggled the ad mute, savvy sunbeams! DJ Sunny sets it to ${isAdMuted ? 'on' : 'off'}—ready for action! 🍒🌸`);
       }
     });
 
