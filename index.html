@@ -104,7 +104,7 @@
       text-align: center;
       margin-bottom: 15px;
     }
-    input[type="text"] {
+    input[type="text"], input[type="email"], input[type="password"] {
       background-color: #f8c3c3;
       border: 2px solid #c94b4b;
       border-radius: 8px;
@@ -229,78 +229,37 @@
     }
     .radio-host-bubble {
       position: fixed;
-      bottom: 60px;
+      bottom: 100px;
       right: 10px;
       background-color: #e6b8b8;
       border: 2px solid #c94b4b;
       border-radius: 12px;
-      padding: 8px;
-      font-size: 9px;
-      max-width: 180px;
+      padding: 6px 10px;
+      font-size: 8px;
+      max-width: 250px;
       text-align: left;
       box-shadow: 2px 2px 0 #2d1a1a;
       z-index: 1001;
-      opacity: 0;
-      display: none;
-      transition: opacity 1s ease-in-out;
-    }
-    .radio-host-bubble.visible {
-      opacity: 1;
-      display: block;
-    }
-    .radio-host-bubble::before {
-      content: '';
-      position: absolute;
-      top: 50%;
-      left: -10px;
-      transform: translateY(-50%);
-      border-top: 10px solid transparent;
-      border-bottom: 10px solid transparent;
-      border-right: 10px solid #c94b4b;
+      animation: fadeIn 1s;
     }
     .psychiatrist-bubble {
       position: fixed;
-      bottom: 10px;
+      bottom: 30px;
       right: 10px;
       background-color: #e6b8b8;
       border: 2px solid #c94b4b;
       border-radius: 12px;
-      padding: 8px;
-      font-size: 9px;
-      max-width: 180px;
+      padding: 6px 10px;
+      font-size: 8px;
+      max-width: 250px;
       text-align: left;
       box-shadow: 2px 2px 0 #2d1a1a;
       z-index: 1001;
-      opacity: 0;
-      display: none;
-      transition: opacity 1s ease-in-out;
+      animation: fadeIn 1s;
     }
-    .psychiatrist-bubble.visible {
-      opacity: 1;
-      display: block;
-    }
-    .psychiatrist-bubble::before {
-      content: '';
-      position: absolute;
-      top: 50%;
-      left: -10px;
-      transform: translateY(-50%);
-      border-top: 10px solid transparent;
-      border-bottom: 10px solid transparent;
-      border-right: 10px solid #c94b4b;
-    }
-    /* Responsive design for smaller screens */
-    @media (max-width: 768px) {
-      .radio-host-bubble {
-        bottom: 80px;
-        right: 5px;
-        max-width: 250px;
-      }
-      .psychiatrist-bubble {
-        bottom: 10px;
-        right: 5px;
-        max-width: 250px;
-      }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
     }
   </style>
 </head>
@@ -345,9 +304,11 @@
     </div>
   </div>
 
-  <!-- AI Chat Bubbles (Bottom Right) -->
-  <div id="radioHostBubble" class="radio-host-bubble">🎵 Greetings, music lovers! This is your charming AI radio host, DJ Sunny ☀️, spinning the tunes! Get ready for a groovy ride! 🍒🌸</div>
-  <div id="psychiatristBubble" class="psychiatrist-bubble">🧠 Hello, dear listener! I’m Dr. Melody, your musical therapist. Let’s explore how these tunes resonate with your soul! 🍒🌸</div>
+  <!-- DJ Sunny Radio Host Bubble (Bottom Right, Above Dr. Melody) -->
+  <div id="radioHostBubble" class="radio-host-bubble hidden">☀️ Hey there, sunshine squad! This is DJ Sunny, dropping the hottest tunes your way! Let’s light up the airwaves! It’s 11:39 AM WITA on a Tuesday—perfect time for some music! What’s your vibe today? 🍒🌸</div>
+
+  <!-- Dr. Melody Psychiatrist Bubble (Bottom Right) -->
+  <div id="psychiatristBubble" class="psychiatrist-bubble hidden">🧠 Hello, dear listener! I’m Dr. Melody, your musical therapist. Let’s explore how these tunes resonate with your soul! A Tuesday morning can be full of possibilities—how are you feeling right now? 🍒🌸</div>
 
   <!-- Popups -->
   <div id="authPopup" class="popup">
@@ -360,7 +321,7 @@
   </div>
   <div id="profilePopup" class="popup">
     <h2 class="text-center font-bold mb-3 text-sm">Profile 🍒🌸</h2>
-    <p class="mb-3">User: Guest 🍒🌸</p>
+    <p id="profileEmail" class="mb-3">User: Guest 🍒🌸</p>
     <button id="signOutBtn" class="retro-button w-full mb-3">Sign Out 🍒🌸</button>
     <button id="closeProfile" class="retro-button w-full">Close 🌸🍒</button>
   </div>
@@ -378,13 +339,6 @@
       <label class="text-xs mr-3">HiFi Mode 🌸🍒</label>
       <label class="toggle-switch">
         <input type="checkbox" id="hifiModeToggle">
-        <span class="slider"></span>
-      </label>
-    </div>
-    <div class="flex items-center mb-3">
-      <label class="text-xs mr-3">Voice for AI Bubbles 🍒🌸</label>
-      <label class="toggle-switch">
-        <input type="checkbox" id="voiceToggle" checked>
         <span class="slider"></span>
       </label>
     </div>
@@ -432,7 +386,6 @@
     let isLoginMode = true;
     let isAdMuted = true; // Enabled by default
     let isHifiMode = false;
-    let isVoiceEnabled = true; // Voice enabled by default
     let isAdPlaying = false;
     let lastStateChangeTime = 0;
     let lastVideoId = null;
@@ -440,6 +393,8 @@
     let lastPlaybackQuality = '';
     let stateHistory = []; // Rolling window of last 3 states
     let userInitiatedPlayback = false; // Track user interaction
+    let lastInterruptTime = 0;
+    let interruptInterval = null;
     const AD_DURATION_THRESHOLD = 60; // Ads can be up to 60 seconds (e.g., skippable)
     const STATE_WINDOW_SIZE = 3; // Track last 3 states
     const TRANSITION_THRESHOLD = 5; // Seconds for frequent transitions
@@ -451,26 +406,141 @@
     let videoMetadataCache = {}; // Cache metadata to avoid repeated API calls
     const radioHostBubble = document.getElementById('radioHostBubble');
     const psychiatristBubble = document.getElementById('psychiatristBubble');
+    const loginSignupBtn = document.getElementById('loginSignupBtn');
+    const profileEmailDisplay = document.getElementById('profileEmail');
+    let messageToggleCounter = 0; // Counter to alternate between DJ Sunny and Dr. Melody
+
+    // Text-to-Speech Setup
     const synth = window.speechSynthesis;
-    let sunnyVoice, melodyVoice;
+    let voices = [];
 
-    // DJ Sunny ☀️ (DJ) Ad Detection Phrases
+    function loadVoices() {
+      voices = synth.getVoices();
+    }
+
+    // Load voices when available
+    loadVoices();
+    if (synth.onvoiceschanged !== undefined) {
+      synth.onvoiceschanged = loadVoices;
+    }
+
+    function speakText(text, pitch, bubbleElement) {
+      // Clean the text by removing emojis and special characters for better speech
+      const cleanText = text.replace(/☀️|🧠|🍒|🌸/g, '').trim();
+      if (cleanText === '') {
+        // If no text to speak, hide the bubble after a fallback timeout
+        setTimeout(() => bubbleElement.classList.add('hidden'), 6000);
+        return;
+      }
+
+      const utterance = new SpeechSynthesisUtterance(cleanText);
+      utterance.pitch = pitch; // Set pitch for different voices
+      utterance.rate = 1.0; // Normal speed
+      utterance.volume = 1.0; // Full volume
+
+      // Try to select a voice (prefer English voice if available)
+      const voice = voices.find(v => v.lang.includes('en')) || voices[0];
+      if (voice) {
+        utterance.voice = voice;
+      } else {
+        // If no voice available, hide the bubble after a fallback timeout
+        setTimeout(() => bubbleElement.classList.add('hidden'), 6000);
+        return;
+      }
+
+      // Hide the bubble when speech ends
+      utterance.onend = () => {
+        bubbleElement.classList.add('hidden');
+      };
+
+      // In case of an error (e.g., speech canceled), hide the bubble after a fallback timeout
+      utterance.onerror = () => {
+        setTimeout(() => bubbleElement.classList.add('hidden'), 6000);
+      };
+
+      synth.speak(utterance);
+    }
+
+    // Enhanced DJ Sunny Phrases (Smarter, Talkative, Interactive)
     const adDetectedPhrases = [
-      `🎵 Hold the beat, groove gurus! DJ Sunny ☀️ spots an ad—muting that noise faster than a drumroll! Let’s keep the rhythm pure! 🍒🌸`,
-      `🎵 Ad alert, music mavens! Your DJ Sunny ☀️ is on the case—muting that interruption so we stay in the groove zone! 🍒🌸`,
-      `🎵 Not on my watch, ads! DJ Sunny ☀️ mutes that commercial break—nothing but sweet melodies for my listeners! 🍒🌸`,
-      `🎵 Ad incoming, but fear not, fans! DJ Sunny ☀️ silences it—keeping our airwaves as smooth as a saxophone solo! 🍒🌸`
+      `☀️ Whoa, sunshine squad! DJ Sunny’s spotting an ad—muting that cloud to keep our sunny beats shining! 🍒🌸`,
+      `☀️ Ad alert, music rays! DJ Sunny’s on it—silencing that interruption for pure sunshine vibes! 🍒🌸`,
+      `☀️ No ads in my sunny set! DJ Sunny mutes that commercial break—only bright tunes for you! 🍒🌸`,
+      `☀️ Ad incoming, but don’t worry, fans! DJ Sunny’s muting it—keeping our airwaves sunny and smooth! 🍒🌸`
     ];
 
-    // DJ Sunny ☀️ (DJ) Ad End Phrases
     const adEndedPhrases = [
-      `🎵 The ad’s outta here, melody masters! DJ Sunny ☀️ unmutes the vibes—back to the beats that make your heart sing! 🍒🌸`,
-      `🎵 Ad break over, rhythm riders! DJ Sunny ☀️ cranks the volume back up—let’s dive back into the musical magic! 🍒🌸`,
-      `🎵 We’re ad-free again, tune titans! DJ Sunny ☀️ restores the sound—your playlist is back in full swing! 🍒🌸`,
-      `🎵 Ad’s gone, groove’s on! DJ Sunny ☀️ unmutes—let’s get back to rocking your world with pure tunes! 🍒🌸`
+      `☀️ The ad’s gone, sunshine crew! DJ Sunny unmutes—back to those radiant beats! 🍒🌸`,
+      `☀️ Ad break over, rhythm rays! DJ Sunny cranks up the sunshine—let’s glow with the music! 🍒🌸`,
+      `☀️ We’re ad-free again, tune travelers! DJ Sunny restores the sunny sound—full blast ahead! 🍒🌸`,
+      `☀️ Ad’s out, vibes are in! DJ Sunny unmutes—let’s bask in these brilliant tracks! 🍒🌸`
     ];
 
-    // Dr. Melody (Psychiatrist) Ad Detection Phrases
+    const midSongInterruptPhrases = [
+      `☀️ Hold up, sunshine squad! DJ Sunny here with a quick interrupt—this track’s got such a funky beat, doesn’t it? Let’s keep grooving—any requests for the next song? 🍒🌸`,
+      `☀️ Breaking in with some sunny vibes, folks! DJ Sunny’s loving this song’s chill lo-fi energy—perfect for a relaxed morning at 11:39 AM WITA! 🍒🌸`,
+      `☀️ Hey there, music rays! DJ Sunny popping in—this artist dropped this banger in 2023, and it’s got over 5M views! 🍒🌸`,
+      `☀️ Quick sunny interruption, crew! DJ Sunny’s digging this track’s upbeat tempo—feels like a solid 130 BPM! 🍒🌸`,
+      `☀️ Sunshine alert, listeners! DJ Sunny here—this song’s got a classic pop vibe, and I’m obsessed! 🍒🌸`
+    ];
+
+    const loadPlaylistPhrases = [
+      `☀️ Rise and shine, tune travelers! DJ Sunny’s loading your playlist with sunny flair—let’s heat up the airwaves! 🍒🌸`,
+      `☀️ Playlist loaded, sunshine crew! DJ Sunny’s ready to rock this set—looks like we’ve got some indie vibes in here! 🍒🌸`,
+      `☀️ Here we go, music rays! DJ Sunny’s got your playlist locked and loaded—perfect for a Tuesday morning at 11:39 AM WITA! 🍒🌸`,
+      `☀️ Your playlist is live, sunny fans! DJ Sunny’s spinning these tracks with love—looks like a 10-song list! 🍒🌸`
+    ];
+
+    const loadVideoPhrases = [
+      `☀️ Bright choice, sunshine fans! DJ Sunny’s spinning your video—get ready for a sunny soundwave! 🍒🌸`,
+      `☀️ Single track loaded, music rays! DJ Sunny’s here to make it shine—this song’s a 4-minute banger! 🍒🌸`,
+      `☀️ Video’s up, sunshine squad! DJ Sunny’s playing this gem—looks like a pop hit from 2022! 🍒🌸`,
+      `☀️ Spinning your pick, sunny listeners! DJ Sunny’s got this track rolling—it’s got a solid 100 BPM! 🍒🌸`
+    ];
+
+    const playPhrases = [
+      `☀️ Let’s light it up, sunshine lovers! DJ Sunny hits play—feel the sunny rhythm! 🍒🌸`,
+      `☀️ Play button smashed, music rays! DJ Sunny’s bringing the heat—this song’s a classic rock anthem! 🍒🌸`,
+      `☀️ We’re rolling, sunny crew! DJ Sunny hits play—this track’s got a dreamy synth vibe! 🍒🌸`,
+      `☀️ Sunshine beats incoming, fans! DJ Sunny’s playing this gem—it’s a 3-minute pop bop! 🍒🌸`
+    ];
+
+    const pausePhrases = [
+      `☀️ Taking a sunshine break, folks! DJ Sunny pauses the beats—enjoy the calm glow! 🍒🌸`,
+      `☀️ Pause mode on, music rays! DJ Sunny’s giving you a breather—this track’s got a chill lo-fi vibe. 🍒🌸`,
+      `☀️ Holding the sunny vibes, crew! DJ Sunny pauses the music—perfect time to reflect! 🍒🌸`,
+      `☀️ Quick sunny break, listeners! DJ Sunny hits pause—let’s soak in the silence for a sec! 🍒🌸`
+    ];
+
+    const nextPhrases = [
+      `☀️ Next stop, sunshine station! DJ Sunny’s cueing up the next track—keep the rays rolling! 🍒🌸`,
+      `☀️ Moving along, music rays! DJ Sunny spins the next song—this track’s got a reggae vibe! 🍒🌸`,
+      `☀️ Next track up, sunny fans! DJ Sunny’s keeping the party going—this song’s a 2024 release! 🍒🌸`,
+      `☀️ Onward we go, sunshine crew! DJ Sunny plays the next tune—this one’s a 5-minute epic! 🍒🌸`
+    ];
+
+    const prevPhrases = [
+      `☀️ Rewind those rays, listeners! DJ Sunny spins back to the previous sunny gem—relive the glow! 🍒🌸`,
+      `☀️ Backtracking, music rays! DJ Sunny plays the last song again—this one’s a country classic! 🍒🌸`,
+      `☀️ Let’s revisit, sunny crew! DJ Sunny spins the previous track—this song’s got a 90s pop feel! 🍒🌸`,
+      `☀️ Rewinding the sunshine, fans! DJ Sunny’s bringing back the last song—this one’s a 3-minute bop! 🍒🌸`
+    ];
+
+    const queueSelectPhrases = [
+      `☀️ Stellar pick, sunshine crew! DJ Sunny’s playing your queue choice—feel the heat! 🍒🌸`,
+      `☀️ Queue selection on point, music rays! DJ Sunny spins your pick—this song’s a 2021 release! 🍒🌸`,
+      `☀️ Loving your taste, sunny fans! DJ Sunny plays your queue choice—this track’s got a chill acoustic sound! 🍒🌸`,
+      `☀️ Queue pick activated, sunshine squad! DJ Sunny’s spinning this gem—it’s a 4-minute indie track! 🍒🌸`
+    ];
+
+    const historySelectPhrases = [
+      `☀️ Nostalgia alert, sunshine fans! DJ Sunny’s replaying a golden oldie from your history—pure radiance! 🍒🌸`,
+      `☀️ History lesson time, music rays! DJ Sunny spins a past favorite—this song’s a 5-minute epic! 🍒🌸`,
+      `☀️ Rewind to the classics, sunny crew! DJ Sunny plays this history pick—it’s got a rock edge! 🍒🌸`,
+      `☀️ Back in time, sunshine squad! DJ Sunny’s replaying this history gem—it’s a 3-minute pop hit! 🍒🌸`
+    ];
+
+    // Enhanced Dr. Melody Phrases (Smarter, Talkative, Interactive)
     const adDetectedPhrasesPsych = [
       `🧠 Oh dear, an ad has surfaced! Dr. Melody here, silencing it to protect your musical sanctuary—let’s keep your emotions flowing with the melody! 🍒🌸`,
       `🧠 I sense an ad interrupting your vibe! Dr. Melody is muting it, ensuring your inner harmony remains undisturbed—let the music heal! 🍒🌸`,
@@ -478,7 +548,6 @@
       `🧠 Not to worry, an ad has appeared, but Dr. Melody is here to mute it—your emotional journey through music remains uninterrupted! 🍒🌸`
     ];
 
-    // Dr. Melody (Psychiatrist) Ad End Phrases
     const adEndedPhrasesPsych = [
       `🧠 The ad has passed, dear listener! Dr. Melody unmutes the music—let’s return to the sounds that soothe your soul! 🍒🌸`,
       `🧠 That ad is behind us now! Dr. Melody restores the melody—how does it feel to reconnect with your musical essence? 🍒🌸`,
@@ -486,71 +555,194 @@
       `🧠 The interruption is over! Dr. Melody unmutes—immerse yourself in the healing power of your playlist! 🍒🌸`
     ];
 
-    // Initialize voices for the AIs
-    function initializeVoices() {
-      const voices = synth.getVoices();
-      // Select a lively voice for DJ Sunny ☀️ (prefer male voice)
-      sunnyVoice = voices.find(voice => voice.name.includes('Google UK English Male')) || 
-                   voices.find(voice => voice.gender === 'male') || 
-                   voices[0];
-      // Select a soothing voice for Dr. Melody (prefer female voice)
-      melodyVoice = voices.find(voice => voice.name.includes('Google UK English Female')) || 
-                    voices.find(voice => voice.gender === 'female') || 
-                    voices[1] || 
-                    voices[0];
-      // Log selected voices for debugging
-      console.log('DJ Sunny Voice:', sunnyVoice?.name);
-      console.log('Dr. Melody Voice:', melodyVoice?.name);
-    }
+    const loadPlaylistPhrasesPsych = [
+      `🧠 A playlist, how wonderful! Dr. Melody senses this selection might reflect your mood—let’s see how it resonates with your inner self! 🍒🌸`,
+      `🧠 Playlist loaded, dear listener! Dr. Melody notices a mix of genres here—perhaps a sign of your diverse emotions today! 🍒🌸`,
+      `🧠 Your playlist is ready, I see! Dr. Melody feels the energy of these tracks—perfect for a Tuesday morning! 🍒🌸`,
+      `🧠 A thoughtful playlist choice! Dr. Melody senses this could be a journey of joy and reflection—let’s explore it together! 🍒🌸`
+    ];
 
-    // Ensure voices are loaded (some browsers need this)
-    if (synth.getVoices().length > 0) {
-      initializeVoices();
-    } else {
-      synth.onvoiceschanged = initializeVoices;
-    }
+    const loadVideoPhrasesPsych = [
+      `🧠 A single track, I see! Dr. Melody wonders what emotions this song stirs in you—let’s listen and reflect together! 🍒🌸`,
+      `🧠 Video loaded, dear listener! Dr. Melody senses this song’s chill vibe—perhaps a moment of calm for you today! 🍒🌸`,
+      `🧠 A song to start our journey! Dr. Melody feels this track’s pop energy—perfect for lifting your spirits! 🍒🌸`,
+      `🧠 Your video is playing, I see! Dr. Melody notices this song’s steady tempo—around 100 BPM. 🍒🌸`
+    ];
 
-    function showRadioHostMessage(message) {
-      radioHostBubble.textContent = message;
-      radioHostBubble.classList.add('visible');
-      if (isVoiceEnabled) {
-        speakMessage(radioHostBubble.textContent, 'sunny');
+    const playPhrasesPsych = [
+      `🧠 The music resumes! Dr. Melody senses your energy shifting—how does this song lift your spirits? 🍒🌸`,
+      `🧠 We’re playing again, dear listener! Dr. Melody feels the rock energy in this track—electric guitars often evoke passion! 🍒🌸`,
+      `🧠 Music flowing once more! Dr. Melody notices this song’s synthwave vibe—dreamy and reflective! 🍒🌸`,
+      `🧠 The melody continues! Dr. Melody senses this pop track’s uplifting tone—perfect for a mood boost! 🍒🌸`
+    ];
+
+    const pausePhrasesPsych = [
+      `🧠 A pause in the music, how intriguing! Dr. Melody wonders—does this silence bring you calm or anticipation? 🍒🌸`,
+      `🧠 Pausing the melody, I see! Dr. Melody feels this moment of quiet—perhaps a chance to reflect! 🍒🌸`,
+      `🧠 A brief pause, dear listener! Dr. Melody senses this break as a moment to breathe—this song’s artist often explores deep themes! 🍒🌸`,
+      `🧠 Music on hold, how thoughtful! Dr. Melody appreciates this pause—silence can be healing too! 🍒🌸`
+    ];
+
+    const nextPhrasesPsych = [
+      `🧠 Moving to the next song, I see! Dr. Melody hopes this track brings a new layer of joy—how does it make you feel? 🍒🌸`,
+      `🧠 On to the next melody! Dr. Melody senses this reggae track’s relaxed vibe—offbeat rhythms often soothe the soul! 🍒🌸`,
+      `🧠 A fresh track begins! Dr. Melody feels this 2024 release’s modern energy—perfect for a new experience! 🍒🌸`,
+      `🧠 The next song plays, dear listener! Dr. Melody notices its 5-minute length—a chance for deeper reflection! 🍒🌸`
+    ];
+
+    const prevPhrasesPsych = [
+      `🧠 A step back in your musical journey! Dr. Melody senses nostalgia—does this song hold special memories for you? 🍒🌸`,
+      `🧠 Revisiting the previous track, I see! Dr. Melody feels this country song’s storytelling—such songs often evoke emotion! 🍒🌸`,
+      `🧠 Back to an earlier melody! Dr. Melody senses a 90s pop vibe—nostalgia can be so comforting! 🍒🌸`,
+      `🧠 Rewinding to the last song! Dr. Melody appreciates this revisit—its 3-minute length is perfect for a quick reflection! 🍒🌸`
+    ];
+
+    const queueSelectPhrasesPsych = [
+      `🧠 A thoughtful choice from the queue! Dr. Melody is curious—what drew you to this song today? 🍒🌸`,
+      `🧠 Queue selection playing now! Dr. Melody notices this 2021 track’s popularity—10M views! 🍒🌸`,
+      `🧠 A lovely queue pick, dear listener! Dr. Melody senses this acoustic song’s calm energy—perfect for introspection! 🍒🌸`,
+      `🧠 Playing your queue choice! Dr. Melody feels this indie track’s raw emotion—indie music often carries authenticity! 🍒🌸`
+    ];
+
+    const historySelectPhrasesPsych = [
+      `🧠 Revisiting a past favorite, I see! Dr. Melody wonders—what emotions does this song bring back for you? 🍒🌸`,
+      `🧠 A history pick, how meaningful! Dr. Melody senses this 5-minute epic’s depth—it even won an award! 🍒🌸`,
+      `🧠 Back to a rock classic from your history! Dr. Melody feels its energy—rock can be so invigorating! 🍒🌸`,
+      `🧠 Replaying a pop hit from your history! Dr. Melody appreciates this choice—pop often uplifts the spirit! 🍒🌸`
+    ];
+
+    function showRadioHostMessage(message, forceShow = false) {
+      if (forceShow || messageToggleCounter % 2 === 0) {
+        radioHostBubble.textContent = message;
+        radioHostBubble.classList.remove('hidden');
+        speakText(message, 1.2, radioHostBubble); // Higher pitch for DJ Sunny
       }
-      setTimeout(() => {
-        radioHostBubble.classList.remove('visible');
-      }, 10000); // Hide after 10 seconds
+      if (!forceShow) messageToggleCounter++;
     }
 
-    function showPsychiatristMessage(message) {
-      psychiatristBubble.textContent = message;
-      psychiatristBubble.classList.add('visible');
-      if (isVoiceEnabled) {
-        speakMessage(psychiatristBubble.textContent, 'melody');
+    function showPsychiatristMessage(message, forceShow = false) {
+      if (forceShow || messageToggleCounter % 2 === 1) {
+        psychiatristBubble.textContent = message;
+        psychiatristBubble.classList.remove('hidden');
+        speakText(message, 0.8, psychiatristBubble); // Lower pitch for Dr. Melody
       }
-      setTimeout(() => {
-        psychiatristBubble.classList.remove('visible');
-      }, 10000); // Hide after 10 seconds
-    }
-
-    function speakMessage(message, ai) {
-      // Cancel any ongoing speech to prevent overlap
-      synth.cancel();
-      const utterance = new SpeechSynthesisUtterance(message); // Read the bubble content directly
-      if (ai === 'sunny') {
-        utterance.voice = sunnyVoice;
-        utterance.pitch = 1.2; // Slightly higher pitch for lively tone
-        utterance.rate = 1.1; // Slightly faster for energetic vibe
-      } else {
-        utterance.voice = melodyVoice;
-        utterance.pitch = 0.9; // Slightly lower pitch for soothing tone
-        utterance.rate = 0.9; // Slightly slower for calm vibe
-      }
-      synth.speak(utterance);
+      if (!forceShow) messageToggleCounter++;
     }
 
     function getRandomPhrase(phrases) {
       return phrases[Math.floor(Math.random() * phrases.length)];
     }
+
+    // Mid-Song Interruption Logic for DJ Sunny
+    function startMidSongInterruptions() {
+      if (interruptInterval) clearInterval(interruptInterval);
+      interruptInterval = setInterval(() => {
+        if (player && player.getPlayerState() === YT.PlayerState.PLAYING && !isAdPlaying) {
+          const currentTime = player.getCurrentTime();
+          const timeSinceLastInterrupt = Date.now() - lastInterruptTime;
+          if (currentTime > 30 && timeSinceLastInterrupt >= 30000) {
+            if (Math.random() < 0.1) {
+              player.pauseVideo();
+              const interruptMessage = getRandomPhrase(midSongInterruptPhrases);
+              showRadioHostMessage(interruptMessage, true);
+              lastInterruptTime = Date.now();
+              setTimeout(() => {
+                if (player.getPlayerState() === YT.PlayerState.PAUSED) {
+                  player.playVideo();
+                  showPsychiatristMessage(`🧠 DJ Sunny’s interruption brought a fun moment, didn’t it? Dr. Melody feels the energy—how did that break in the music affect your mood? 🍒🌸`, true);
+                }
+              }, 5000);
+            }
+          }
+        }
+      }, 45000); // 45 seconds, 10% chance
+    }
+
+    // Authentication Functions
+    async function login(email, password) {
+      try {
+        const response = await fetch('http://localhost:3000/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await response.json();
+        if (response.ok) {
+          localStorage.setItem('token', data.token);
+          updateAuthState(data.token);
+          togglePopup('authPopup', false);
+          showRadioHostMessage(`☀️ Welcome back, sunshine VIP! DJ Sunny’s thrilled to see you—let’s make the airwaves glow! 🍒🌸`, true);
+          showPsychiatristMessage(`🧠 You’ve logged in, how wonderful! Dr. Melody is here—how does returning to this musical space feel? 🍒🌸`, true);
+        } else {
+          alert(data.message);
+        }
+      } catch (err) {
+        alert('Error logging in. Please try again.');
+      }
+    }
+
+    async function signup(email, password) {
+      try {
+        const response = await fetch('http://localhost:3000/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await response.json();
+        if (response.ok) {
+          localStorage.setItem('token', data.token);
+          updateAuthState(data.token);
+          togglePopup('authPopup', false);
+          showRadioHostMessage(`☀️ Welcome to the sunny crew, new VIP! DJ Sunny’s pumped to have you—let’s shine together! 🍒🌸`, true);
+          showPsychiatristMessage(`🧠 A warm welcome to you, new listener! Dr. Melody is delighted—how does joining this musical community feel? 🍒🌸`, true);
+        } else {
+          alert(data.message);
+        }
+      } catch (err) {
+        alert('Error signing up. Please try again.');
+      }
+    }
+
+    async function verifyToken(token) {
+      try {
+        const response = await fetch('http://localhost:3000/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token })
+        });
+        const data = await response.json();
+        if (response.ok) {
+          return data.email;
+        } else {
+          localStorage.removeItem('token');
+          return null;
+        }
+      } catch (err) {
+        localStorage.removeItem('token');
+        return null;
+      }
+    }
+
+    async function updateAuthState(token) {
+      const email = await verifyToken(token);
+      if (email) {
+        loginSignupBtn.textContent = 'Logout 🍒🌸';
+        profileEmailDisplay.textContent = `User: ${email} 🍒🌸`;
+      } else {
+        loginSignupBtn.textContent = 'Login 🍒🌸';
+        profileEmailDisplay.textContent = 'User: Guest 🍒🌸';
+      }
+    }
+
+    async function checkAuthOnLoad() {
+      const token = localStorage.getItem('token');
+      if (token) {
+        await updateAuthState(token);
+      }
+    }
+
+    // Run on page load
+    checkAuthOnLoad();
 
     function onYouTubeIframeAPIReady() {
       player = new YT.Player('player', {
@@ -562,8 +754,8 @@
           'onPlaybackQualityChange': onPlaybackQualityChange
         }
       });
-      showRadioHostMessage('🎵 Greetings, music lovers! This is your charming AI radio host, DJ Sunny ☀️, spinning the tunes! Get ready for a groovy ride! 🍒🌸');
-      showPsychiatristMessage('🧠 Hello, dear listener! I’m Dr. Melody, your musical therapist. Let’s explore how these tunes resonate with your soul! 🍒🌸');
+      showRadioHostMessage('☀️ Hey there, sunshine squad! This is DJ Sunny, dropping the hottest tunes your way! Let’s light up the airwaves! It’s 11:39 AM WITA on a Tuesday—perfect time for some music! What’s your vibe today? 🍒🌸', true);
+      showPsychiatristMessage('🧠 Hello, dear listener! I’m Dr. Melody, your musical therapist. Let’s explore how these tunes resonate with your soul! A Tuesday morning can be full of possibilities—how are you feeling right now? 🍒🌸', true);
     }
 
     function onPlayerReady(event) {
@@ -575,14 +767,16 @@
       if (isAdMuted && isAdPlaying) {
         player.mute();
       }
+      startMidSongInterruptions();
     }
 
     function onPlaybackQualityChange(event) {
       const currentQuality = event.data;
       if (lastPlaybackQuality && currentQuality !== lastPlaybackQuality) {
         console.log(`Playback quality changed: ${lastPlaybackQuality} -> ${currentQuality}`);
+        showRadioHostMessage(`☀️ Quality switch detected, music rays! DJ Sunny’s keeping it smooth—now playing in ${currentQuality}! 🍒🌸`);
+        lastPlaybackQuality = currentQuality;
       }
-      lastPlaybackQuality = currentQuality;
     }
 
     async function fetchVideoMetadata(videoId) {
@@ -595,7 +789,8 @@
         if (data.items && data.items.length > 0) {
           const metadata = {
             title: data.items[0].snippet.title,
-            channel: data.items[0].snippet.channelTitle
+            channel: data.items[0].snippet.channelTitle,
+            publishedAt: data.items[0].snippet.publishedAt
           };
           videoMetadataCache[videoId] = metadata;
           return metadata;
@@ -732,8 +927,10 @@
               currentIndex = 0;
               userInitiatedPlayback = true; // User initiated
               playSong();
-              showRadioHostMessage(`🎵 Oh, what a treat, listeners! DJ Sunny ☀️ here, loading your playlist with flair—let’s dive into this musical masterpiece! 🍒🌸`);
-              showPsychiatristMessage(`🧠 A playlist, how wonderful! Dr. Melody senses this selection might reflect your mood—let’s see how it resonates with your inner self! 🍒🌸`);
+              const loadPlaylistMessage = getRandomPhrase(loadPlaylistPhrases);
+              const loadPlaylistMessagePsych = getRandomPhrase(loadPlaylistPhrasesPsych);
+              showRadioHostMessage(loadPlaylistMessage, true);
+              showPsychiatristMessage(loadPlaylistMessagePsych, true);
             }
           })
           .catch(err => alert('Error loading playlist. Please check the URL or API key.'));
@@ -753,8 +950,10 @@
                   currentIndex = 0;
                   userInitiatedPlayback = true; // User initiated
                   playSong();
-                  showRadioHostMessage(`🎵 Fantastic choice, folks! DJ Sunny ☀️ is spinning your video—get ready for a sonic adventure! 🍒🌸`);
-                  showPsychiatristMessage(`🧠 A single track, I see! Dr. Melody wonders what emotions this song stirs in you—let’s listen and reflect together! 🍒🌸`);
+                  const loadVideoMessage = getRandomPhrase(loadVideoPhrases);
+                  const loadVideoMessagePsych = getRandomPhrase(loadVideoPhrasesPsych);
+                  showRadioHostMessage(loadVideoMessage, true);
+                  showPsychiatristMessage(loadVideoMessagePsych, true);
                 }
               } else {
                 alert('Invalid video URL');
@@ -775,6 +974,7 @@
           history.push(playlist[currentIndex]);
           updateHistory();
         }
+        lastInterruptTime = 0; // Reset interruption timer for the new song
       }
     }
 
@@ -786,16 +986,20 @@
       }
       userInitiatedPlayback = true; // User initiated
       playSong();
-      showRadioHostMessage(`🎵 Onward we go, music aficionados! DJ Sunny ☀️ is cueing up the next track—let’s keep the rhythm rolling! 🍒🌸`);
-      showPsychiatristMessage(`🧠 Moving to the next song, I see! Dr. Melody hopes this track brings a new layer of joy—how does it make you feel? 🍒🌸`);
+      const nextMessage = getRandomPhrase(nextPhrases);
+      const nextMessagePsych = getRandomPhrase(nextPhrasesPsych);
+      showRadioHostMessage(nextMessage);
+      showPsychiatristMessage(nextMessagePsych);
     }
 
     function playPrevious() {
       currentIndex = (currentIndex - 1 + playlist.length) % playlist.length;
       userInitiatedPlayback = true; // User initiated
       playSong();
-      showRadioHostMessage(`🎵 Back we spin, dear listeners! DJ Sunny ☀️ rewinds to the previous gem—relive the magic! 🍒🌸`);
-      showPsychiatristMessage(`🧠 A step back in your musical journey! Dr. Melody senses nostalgia—does this song hold special memories for you? 🍒🌸`);
+      const prevMessage = getRandomPhrase(prevPhrases);
+      const prevMessagePsych = getRandomPhrase(prevPhrasesPsych);
+      showRadioHostMessage(prevMessage);
+      showPsychiatristMessage(prevMessagePsych);
     }
 
     function updateQueue() {
@@ -809,8 +1013,10 @@
           currentIndex = index;
           userInitiatedPlayback = true; // User initiated
           playSong();
-          showRadioHostMessage(`🎵 Brilliant pick, folks! DJ Sunny ☀️ is now playing your selected track from the queue—enjoy the beat! 🍒🌸`);
-          showPsychiatristMessage(`🧠 A thoughtful choice from the queue! Dr. Melody is curious—what drew you to this song today? 🍒🌸`);
+          const queueMessage = getRandomPhrase(queueSelectPhrases);
+          const queueMessagePsych = getRandomPhrase(queueSelectPhrasesPsych);
+          showRadioHostMessage(queueMessage);
+          showPsychiatristMessage(queueMessagePsych);
         };
         queueList.appendChild(li);
       });
@@ -828,8 +1034,10 @@
           if (currentIndex !== -1) {
             userInitiatedPlayback = true; // User initiated
             playSong();
-            showRadioHostMessage(`🎵 Nostalgia alert, listeners! DJ Sunny ☀️ is replaying a classic from your history—pure auditory bliss! 🍒🌸`);
-            showPsychiatristMessage(`🧠 Revisiting a past favorite, I see! Dr. Melody wonders—what emotions does this song bring back for you? 🍒🌸`);
+            const historyMessage = getRandomPhrase(historySelectPhrases);
+            const historyMessagePsych = getRandomPhrase(historySelectPhrasesPsych);
+            showRadioHostMessage(historyMessage);
+            showPsychiatristMessage(historyMessagePsych);
           }
         };
         historyList.appendChild(li);
@@ -847,13 +1055,17 @@
       if (player.getPlayerState() === YT.PlayerState.PLAYING) {
         player.pauseVideo();
         document.getElementById('playPauseBtn').textContent = 'Play 🍒🌸';
-        showRadioHostMessage(`🎵 Taking a breather, folks! DJ Sunny ☀️ pauses the music—catch your breath and enjoy the silence! 🍒🌸`);
-        showPsychiatristMessage(`🧠 A pause in the music, how intriguing! Dr. Melody wonders—does this silence bring you calm or anticipation? 🍒🌸`);
+        const pauseMessage = getRandomPhrase(pausePhrases);
+        const pauseMessagePsych = getRandomPhrase(pausePhrasesPsych);
+        showRadioHostMessage(pauseMessage);
+        showPsychiatristMessage(pauseMessagePsych);
       } else {
         player.playVideo();
         document.getElementById('playPauseBtn').textContent = 'Pause 🍒🌸';
-        showRadioHostMessage(`🎵 Let’s crank it up, music lovers! DJ Sunny ☀️ hits play—feel the rhythm flow! 🍒🌸`);
-        showPsychiatristMessage(`🧠 The music resumes! Dr. Melody senses your energy shifting—how does this song lift your spirits? 🍒🌸`);
+        const playMessage = getRandomPhrase(playPhrases);
+        const playMessagePsych = getRandomPhrase(playPhrasesPsych);
+        showRadioHostMessage(playMessage);
+        showPsychiatristMessage(playMessagePsych);
         userInitiatedPlayback = true; // User initiated
       }
     });
@@ -863,23 +1075,27 @@
     // Popup Controls
     document.getElementById('profileBtn').addEventListener('click', () => {
       togglePopup('profilePopup', true);
-      showRadioHostMessage(`🎵 Step into the spotlight, listeners! DJ Sunny ☀️ opens your Profile—check your groovy stats! 🍒🌸`);
-      showPsychiatristMessage(`🧠 Exploring your profile, I see! Dr. Melody is here to help—how does seeing your musical journey make you feel? 🍒🌸`);
+      // AI messages removed for Profile button
     });
     document.getElementById('settingsBtn').addEventListener('click', () => {
       togglePopup('settingsPopup', true);
-      showRadioHostMessage(`🎵 Time to tweak the vibes, folks! DJ Sunny ☀️ unveils Settings—let’s fine-tune your audio adventure! 🍒🌸`);
-      showPsychiatristMessage(`🧠 Adjusting your settings, how thoughtful! Dr. Melody senses you’re seeking control—let’s customize this experience to suit your mood! 🍒🌸`);
+      // AI messages removed for Settings button
     });
     document.getElementById('pomodoroBtn').addEventListener('click', () => {
       togglePopup('pomodoroPopup', true);
-      showRadioHostMessage(`🎵 Productivity time, music maestros! DJ Sunny ☀️ starts the Pomodoro timer—work hard, groove harder! 🍒🌸`);
-      showPsychiatristMessage(`🧠 A Pomodoro timer, how proactive! Dr. Melody supports your focus—let’s balance productivity with the soothing power of music! 🍒🌸`);
+      showRadioHostMessage(`☀️ Productivity time, sunshine workers! DJ Sunny starts the Pomodoro—work hard, shine harder! 🍒🌸`, true);
+      showPsychiatristMessage(`🧠 A Pomodoro timer, how proactive! Dr. Melody supports your focus—let’s balance productivity with the soothing power of music! 🍒🌸`, true);
     });
     document.getElementById('loginSignupBtn').addEventListener('click', () => {
-      togglePopup('authPopup', true);
-      showRadioHostMessage(`🎵 Welcome aboard, newbies! DJ Sunny ☀️ opens the Login/Sign-up portal—join the musical family! 🍒🌸`);
-      showPsychiatristMessage(`🧠 Joining our community, I see! Dr. Melody welcomes you—how does becoming part of this musical space feel for you? 🍒🌸`);
+      const token = localStorage.getItem('token');
+      if (token) {
+        localStorage.removeItem('token');
+        updateAuthState(null);
+        // AI messages removed for logout action
+      } else {
+        togglePopup('authPopup', true);
+        // AI messages removed for login/signup action
+      }
     });
     document.getElementById('closeAuth').addEventListener('click', () => togglePopup('authPopup', false));
     document.getElementById('closeProfile').addEventListener('click', () => togglePopup('profilePopup', false));
@@ -894,17 +1110,22 @@
       document.getElementById('submitAuth').textContent = isLoginMode ? 'Login 🍒🌸' : 'Sign Up 🌸🍒';
     });
     document.getElementById('submitAuth').addEventListener('click', () => {
-      alert(`${isLoginMode ? 'Login' : 'Sign-up'} functionality not implemented. Replace with real authentication.`);
-      togglePopup('authPopup', false);
+      const email = document.getElementById('authEmail').value;
+      const password = document.getElementById('authPassword').value;
+      if (isLoginMode) {
+        login(email, password);
+      } else {
+        signup(email, password);
+      }
     });
 
     // Profile Popup
     document.getElementById('signOutBtn').addEventListener('click', () => {
-      alert('Sign out functionality not implemented. Replace with real authentication.');
-      document.getElementById('profilePopup').querySelector('p').textContent = 'User: Guest 🍒🌸';
+      localStorage.removeItem('token');
+      updateAuthState(null);
       togglePopup('profilePopup', false);
-      showRadioHostMessage(`🎵 Farewell for now, VIP! DJ Sunny ☀️ logs you out—come back soon! 🍒🌸`);
-      showPsychiatristMessage(`🧠 Signing out, I see! Dr. Melody hopes this musical journey brought you joy—until we meet again! 🍒🌸`);
+      showRadioHostMessage(`☀️ Farewell for now, sunshine VIP! DJ Sunny logs you out—come back to the rays! 🍒🌸`, true);
+      showPsychiatristMessage(`🧠 Signing out, I see! Dr. Melody hopes this musical journey brought you joy—until we meet again! 🍒🌸`, true);
     });
 
     // Pomodoro Timer
@@ -925,20 +1146,20 @@
           if (timeLeft <= 0) {
             isWork = !isWork;
             timeLeft = (isWork ? document.getElementById('pomodoroWork').value : document.getElementById('pomodoroBreak').value) * 60;
-            showRadioHostMessage(`🎵 Time’s up, productivity pros! DJ Sunny ☀️ switches to ${isWork ? 'work' : 'break'}—keep the energy flowing! 🍒🌸`);
-            showPsychiatristMessage(`🧠 A shift in focus, how refreshing! Dr. Melody supports your transition to ${isWork ? 'work' : 'break'}—let the music guide your energy! 🍒🌸`);
+            showRadioHostMessage(`☀️ Time’s up, productivity rays! DJ Sunny switches to ${isWork ? 'work' : 'break'}—keep shining! 🍒🌸`, true);
+            showPsychiatristMessage(`🧠 A shift in focus, how refreshing! Dr. Melody supports your transition to ${isWork ? 'work' : 'break'}—let the music guide your energy! 🍒🌸`, true);
           }
           updatePomodoroDisplay();
         }, 1000);
         document.getElementById('pomodoroStart').textContent = 'Pause 🍒🌸';
-        showRadioHostMessage(`🎵 Let’s get productive, music fans! DJ Sunny ☀️ starts the Pomodoro—25 minutes of pure focus! 🍒🌸`);
-        showPsychiatristMessage(`🧠 Starting the Pomodoro, how motivated! Dr. Melody is here—let’s channel this focus into a harmonious balance with your tunes! 🍒🌸`);
+        showRadioHostMessage(`☀️ Let’s shine with focus, sunshine fans! DJ Sunny starts the Pomodoro—25 minutes of brilliance! 🍒🌸`, true);
+        showPsychiatristMessage(`🧠 Starting the Pomodoro, how motivated! Dr. Melody is here—let’s channel this focus into a harmonious balance with your tunes! 🍒🌸`, true);
       } else {
         clearInterval(pomodoroInterval);
         pomodoroInterval = null;
         document.getElementById('pomodoroStart').textContent = 'Start 🍒🌸';
-        showRadioHostMessage(`🎵 Taking a break from the timer, folks! DJ Sunny ☀️ pauses the Pomodoro—rest those creative minds! 🍒🌸`);
-        showPsychiatristMessage(`🧠 Pausing the timer, I see! Dr. Melody encourages this moment of rest—how does this break feel for you? 🍒🌸`);
+        showRadioHostMessage(`☀️ Taking a sunny break, folks! DJ Sunny pauses the Pomodoro—rest those radiant minds! 🍒🌸`, true);
+        showPsychiatristMessage(`🧠 Pausing the timer, I see! Dr. Melody encourages this moment of rest—how does this break feel for you? 🍒🌸`, true);
       }
     });
 
@@ -949,8 +1170,8 @@
       isWork = true;
       updatePomodoroDisplay();
       document.getElementById('pomodoroStart').textContent = 'Start 🍒🌸';
-      showRadioHostMessage(`🎵 Resetting the clock, time travelers! DJ Sunny ☀️ restarts the Pomodoro—fresh start, fresh beats! 🍒🌸`);
-      showPsychiatristMessage(`🧠 A reset, how grounding! Dr. Melody appreciates your fresh start—let’s align this new cycle with your musical flow! 🍒🌸`);
+      showRadioHostMessage(`☀️ Resetting the sunny clock, time travelers! DJ Sunny restarts the Pomodoro—fresh rays, fresh beats! 🍒🌸`, true);
+      showPsychiatristMessage(`🧠 A reset, how grounding! Dr. Melody appreciates your fresh start—let’s align this new cycle with your musical flow! 🍒🌸`, true);
     });
 
     // Settings Toggles
@@ -959,46 +1180,33 @@
       if (isAdPlaying) {
         if (isAdMuted) {
           player.mute();
-          showRadioHostMessage(`🎵 Silence those ads, folks! DJ Sunny ☀️ mutes the interruptions—pure music magic ahead! 🍒🌸`);
-          showPsychiatristMessage(`🧠 Muting the ads, how soothing! Dr. Melody ensures your focus stays on the music—let’s keep your mind at ease! 🍒🌸`);
+          showRadioHostMessage(`☀️ Clearing the clouds, sunshine fans! DJ Sunny mutes those ads—pure rays ahead! 🍒🌸`);
         } else {
           player.unMute();
-          showRadioHostMessage(`🎵 Ads are back on, music lovers! DJ Sunny ☀️ unmutes—embrace the full audio spectrum! 🍒🌸`);
-          showPsychiatristMessage(`🧠 Unmuting the ads, I see! Dr. Melody senses your openness—how does this change affect your listening experience? 🍒🌸`);
+          showRadioHostMessage(`☀️ Ads back on, music rays! DJ Sunny unmutes—embrace the full sunny spectrum! 🍒🌸`);
         }
       } else {
-        showRadioHostMessage(`🎵 Toggled the ad mute, savvy listeners! DJ Sunny ☀️ sets it to ${isAdMuted ? 'on' : 'off'}—stay in control! 🍒🌸`);
-        showPsychiatristMessage(`🧠 Adjusting ad muting, how empowering! Dr. Melody supports your choice—does this setting align with your emotional needs? 🍒🌸`);
+        showRadioHostMessage(`☀️ Toggled the ad mute, savvy sunbeams! DJ Sunny sets it to ${isAdMuted ? 'on' : 'off'}—stay in charge! 🍒🌸`);
       }
     });
 
     document.getElementById('hifiModeToggle').addEventListener('change', () => {
       isHifiMode = document.getElementById('hifiModeToggle').checked;
-      showRadioHostMessage(`🎵 Elevating the soundstage, audiophiles! DJ Sunny ☀️ switches HiFi Mode to ${isHifiMode ? 'on' : 'off'}—crisp vibes incoming! 🍒🌸`);
-      showPsychiatristMessage(`🧠 HiFi Mode ${isHifiMode ? 'enabled' : 'disabled'}, how enriching! Dr. Melody wonders—does this change deepen your connection to the music? 🍒🌸`);
-    });
-
-    document.getElementById('voiceToggle').addEventListener('change', () => {
-      isVoiceEnabled = document.getElementById('voiceToggle').checked;
-      showRadioHostMessage(`🎵 Voice for AI messages is now ${isVoiceEnabled ? 'on' : 'off'}, folks! DJ Sunny ☀️ keeps you in the loop! 🍒🌸`);
-      showPsychiatristMessage(`🧠 Voice messages ${isVoiceEnabled ? 'enabled' : 'disabled'}, how fascinating! Dr. Melody hopes this suits your listening experience! 🍒🌸`);
+      showRadioHostMessage(`☀️ Boosting the sunshine sound, audiophiles! DJ Sunny switches HiFi Mode to ${isHifiMode ? 'on' : 'off'}—crisp rays incoming! 🍒🌸`);
     });
 
     // Equalizer (mock)
-    document.getElementById('bass').addEventListener('input', () => {
+    document.getElementById('bass').addEventListener('click', () => {
       const value = document.getElementById('bass').value;
-      showRadioHostMessage(`🎵 Thumping the bass, beat masters! DJ Sunny ☀️ adjusts it to ${value}—feel the low-end love! 🍒🌸`);
-      showPsychiatristMessage(`🧠 Adjusting the bass to ${value}, how grounding! Dr. Melody senses the rhythm—does this low frequency resonate with your emotions? 🍒🌸`);
+      showRadioHostMessage(`☀️ Thumping the sunny bass, beat rays! DJ Sunny adjusts it to ${value}—feel the low-end glow! 🍒🌸`);
     });
-    document.getElementById('mid').addEventListener('input', () => {
+    document.getElementById('mid').addEventListener('click', () => {
       const value = document.getElementById('mid').value;
-      showRadioHostMessage(`🎵 Tuning the mids, harmony hunters! DJ Sunny ☀️ sets it to ${value}—perfect balance achieved! 🍒🌸`);
-      showPsychiatristMessage(`🧠 Balancing the mids at ${value}, how harmonious! Dr. Melody reflects—does this adjustment bring clarity to your musical experience? 🍒🌸`);
+      showRadioHostMessage(`☀️ Tuning the sunny mids, harmony beams! DJ Sunny sets it to ${value}—perfect balance achieved! 🍒🌸`);
     });
-    document.getElementById('treble').addEventListener('input', () => {
+    document.getElementById('treble').addEventListener('click', () => {
       const value = document.getElementById('treble').value;
-      showRadioHostMessage(`🎵 Sizzling the treble, high-note heroes! DJ Sunny ☀️ dials it to ${value}—crystal-clear highs! 🍒🌸`);
-      showPsychiatristMessage(`🧠 Elevating the treble to ${value}, how uplifting! Dr. Melody feels the energy—does this brightness spark joy in your listening? 🍒🌸`);
+      showRadioHostMessage(`☀️ Sizzling the sunny treble, high-note rays! DJ Sunny dials it to ${value}—crystal-clear sunshine! 🍒🌸`);
     });
   </script>
 </body>
